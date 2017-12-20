@@ -1,0 +1,36 @@
+name: Test
+mixers:
+    - weight: 100
+      destCh: 1
+      srcRaw: Thr
+      carryTrim: 1
+      offset: 100
+      swtch: 55
+      flightModes: 341
+      name: IN1
+    - destCh: 2
+      name: IN2
+      srcRaw: Ail
+      carryTrim: 0
+          - name: Mix-1
+            source: input1
+            weight: 100
+          - name: Mix-2
+            source: SA
+            switch SA-up
+            weight: GV1
+    - weight: 100
+      destCh: 3
+      srcRaw: Thr
+      offset: 100
+      name: IN1
+    - destCh: 4
+      name: IN2
+      srcRaw: Ail
+outputs:
+    - name: OUT1
+      min: -100%
+      max: 100%
+      center: 0%
+      ppm-center: 1500us
+blabla: voila!
