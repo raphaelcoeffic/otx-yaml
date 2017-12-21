@@ -11,20 +11,63 @@ enum YamlDataType {
     YDT_UNSIGNED,
     YDT_STRING,
     YDT_ARRAY,
+    YDT_ENUM,
     YDT_PADDING
 };
 
-struct YamlNode {
-    YamlDataType    type;
-    unsigned char   size;  // bits or bytes, depending on type
-    unsigned char   elmts; // maximum number of elements
-    unsigned char   tag_len;
-    const char*     tag;
-    const YamlNode* child;
-    const YamlNode* parent;
+struct YamlIdStr
+{
+    unsigned int id;
+    const char*  str;
 };
 
-#define YAML_TAG(tag) (sizeof(tag)-1), (tag)
+struct YamlNode
+{
+    YamlDataType    type;
+    unsigned char   size;  // bits or bytes, depending on type
+    unsigned char   tag_len;
+    const char*     tag;
+    union {
+        struct {
+            unsigned char   elmts; // maximum number of elements
+            const YamlNode* child;
+        } _array;
+
+        struct {
+            const YamlIdStr* choices;
+        } _enum;
+    } u;
+};
+
+#define YAML_TAG(str)                           \
+    .tag_len=(sizeof(str)-1), .tag=(str)
+
+#define YAML_SIGNED(tag, bits)                          \
+    { .type=YDT_SIGNED, .size=(bits), YAML_TAG(tag) }
+
+#define YAML_UNSIGNED(tag, bits)                        \
+    { .type=YDT_UNSIGNED, .size=(bits), YAML_TAG(tag) }
+
+#define YAML_STRING(tag, max_len)                               \
+    { .type=YDT_STRING, .size=(max_len), YAML_TAG(tag) }
+
+#define YAML_STRUCT(tag, stype, nodes)                                   \
+    { .type=YDT_ARRAY, .size=sizeof(stype), YAML_TAG(tag), .u={._array={ .elmts=1, .child=(nodes) }} }
+
+#define YAML_ARRAY(tag, stype, max_elmts, nodes)                         \
+    { .type=YDT_ARRAY, .size=sizeof(stype), YAML_TAG(tag), .u={._array={ .elmts=(max_elmts), .child=(nodes) }} }
+
+#define YAML_ENUM(tag, bits, id_strs)                                   \
+    { .type=YDT_ENUM, .size=(bits), YAML_TAG(tag), .u={ ._enum={ .choices=(id_strs) } } }
+
+#define YAML_PADDING(bits)                      \
+    { .type=YDT_PADDING, .size=(bits) }
+
+#define YAML_END                                \
+    { .type=YDT_NONE, .size=0 }
+
+#define YAML_ROOT(nodes)                                                \
+    { .type=YDT_ARRAY, .size=0, .tag_len=0, .tag=NULL, .u={._array={ .elmts=1, .child=(nodes) }} }
 
 struct NodeStackElmt {
     const YamlNode* node;
@@ -46,10 +89,6 @@ public:
     // return true on success
     bool push(const YamlNode* node, unsigned int bit_ofs, unsigned int elmts);
     bool pop(const YamlNode*& node, unsigned int& bit_ofs, unsigned int& elmts);
-
-    // const YamlNode* getNode();
-    // unsigned int    getBitOfs();
-    //unsigned int    getElmts();
 };
 
 

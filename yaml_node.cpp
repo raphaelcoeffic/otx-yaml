@@ -38,7 +38,7 @@ bool NodeStack::pop(const YamlNode*& node, unsigned int& bit_ofs, unsigned int& 
 
 YamlTreeWalker::YamlTreeWalker(const YamlNode* node)
     : current_node(node),
-      current_attr(node->child),
+      current_attr(NULL),
       attr_bit_ofs(0),
       level_bit_ofs(0),
       elmts(0),
@@ -50,8 +50,10 @@ YamlTreeWalker::YamlTreeWalker(const YamlNode* node)
 // (and reset the bit offset)
 void YamlTreeWalker::rewind()
 {
-    current_attr = current_node->child;
-    attr_bit_ofs = 0;
+    if (current_node->type == YDT_ARRAY) {
+        current_attr = current_node->u._array.child;
+        attr_bit_ofs = 0;
+    }
 }
 
 // Increment the cursor until a match is found or the end of
@@ -65,7 +67,7 @@ bool YamlTreeWalker::findNode(const char* tag, uint8_t tag_len)
     
     rewind();
 
-    while(current_attr->type != YDT_NONE) {
+    while(current_attr && current_attr->type != YDT_NONE) {
 
         //printf("->comp(%.*s,%.*s)",tag_len,tag,current_attr->tag_len,current_attr->tag);
         if ((tag_len == current_attr->tag_len)
@@ -75,7 +77,7 @@ bool YamlTreeWalker::findNode(const char* tag, uint8_t tag_len)
 
         if (current_attr->type == YDT_ARRAY) {
             attr_bit_ofs +=
-                ((uint32_t)current_attr->elmts * (uint32_t)current_attr->size) << 3UL;
+                ((uint32_t)current_attr->u._array.elmts * (uint32_t)current_attr->size) << 3UL;
         }
         else if (current_attr->type == YDT_STRING) {
             attr_bit_ofs += ((uint32_t)current_attr->size) << 3UL;
@@ -110,6 +112,9 @@ bool YamlTreeWalker::toParent()
         return false;
     }
 
+    attr_bit_ofs = 0;
+    current_attr = NULL;
+
     return true;
 }
 
@@ -129,15 +134,17 @@ bool YamlTreeWalker::toChild()
     current_node  = current_attr;
     level_bit_ofs = attr_bit_ofs;
 
+    attr_bit_ofs  = 0;
+    current_attr = NULL;
+
     return true;
 }
-
 
 bool YamlTreeWalker::nextArrayElmt()
 {
     if (!level && (current_node->type == YDT_ARRAY)) {
 
-        if (elmts >= current_node->elmts) {
+        if (elmts >= current_node->u._array.elmts) {
             printf("max elmts reached!!!\n");
             return false;
         }
@@ -149,3 +156,4 @@ bool YamlTreeWalker::nextArrayElmt()
 
     return true;
 }
+

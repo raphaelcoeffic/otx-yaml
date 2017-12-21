@@ -11,6 +11,17 @@
 #define MAX_MIXERS  4
 #define MAX_EXPOS   8
 
+enum MixSources {
+    MIXSRC_NONE=0,
+    MIXSRC_Rud,
+    MIXSRC_Ele,
+    MIXSRC_Thr,
+    MIXSRC_Ail,
+    MIXSRC_S1,
+    MIXSRC_6POS,
+    MIXSRC_S2
+};
+
 PACK(struct CurveRef {
   uint8_t type;
   int8_t  value;

@@ -6,9 +6,6 @@
 
 #define MAX_STR 16
 
-typedef void (*attr_set_func)(void* opaque, unsigned int bit_ofs, const YamlNode* node,
-                              const char* val, unsigned char val_len);
-
 class YamlParser
 {
     enum ParserState {
@@ -45,8 +42,7 @@ public:
     };
 
     YamlParser(const YamlNode * node);
-    YamlResult parse(const char* buffer, unsigned int size,
-                     attr_set_func f, void* opaque);
+    YamlResult parse(const char* buffer, unsigned int size, void* opaque);
 };
 
 

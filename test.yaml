@@ -1,6 +1,6 @@
 name: Test
 mixers:
-    - weight: 100
+    - weight: -150
       destCh: 1
       srcRaw: Thr
       carryTrim: 1
