@@ -49,13 +49,13 @@ struct YamlNode
     { .type=YDT_UNSIGNED, .size=(bits), YAML_TAG(tag) }
 
 #define YAML_STRING(tag, max_len)                               \
-    { .type=YDT_STRING, .size=(max_len), YAML_TAG(tag) }
+    { .type=YDT_STRING, .size=((max_len)<<3), YAML_TAG(tag) }
 
 #define YAML_STRUCT(tag, stype, nodes)                                   \
-    { .type=YDT_ARRAY, .size=sizeof(stype), YAML_TAG(tag), .u={._array={ .elmts=1, .child=(nodes) }} }
+    { .type=YDT_ARRAY, .size=(sizeof(stype)<<3), YAML_TAG(tag), .u={._array={ .elmts=1, .child=(nodes) }} }
 
 #define YAML_ARRAY(tag, stype, max_elmts, nodes)                         \
-    { .type=YDT_ARRAY, .size=sizeof(stype), YAML_TAG(tag), .u={._array={ .elmts=(max_elmts), .child=(nodes) }} }
+    { .type=YDT_ARRAY, .size=(sizeof(stype)<<3), YAML_TAG(tag), .u={._array={ .elmts=(max_elmts), .child=(nodes) }} }
 
 #define YAML_ENUM(tag, bits, id_strs)                                   \
     { .type=YDT_ENUM, .size=(bits), YAML_TAG(tag), .u={ ._enum={ .choices=(id_strs) } } }
@@ -69,42 +69,61 @@ struct YamlNode
 #define YAML_ROOT(nodes)                                                \
     { .type=YDT_ARRAY, .size=0, .tag_len=0, .tag=NULL, .u={._array={ .elmts=1, .child=(nodes) }} }
 
-struct NodeStackElmt {
-    const YamlNode* node;
-    unsigned int    bit_ofs;
-    unsigned int    elmts;
-};
-
-class NodeStack
-{
-    NodeStackElmt nodeStack[NODE_STACK_DEPTH];
-    unsigned int  level;
-
-public:
-    NodeStack();
-
-    bool empty() { return level == NODE_STACK_DEPTH; }
-    bool full()  { return level == 0; }
-    
-    // return true on success
-    bool push(const YamlNode* node, unsigned int bit_ofs, unsigned int elmts);
-    bool pop(const YamlNode*& node, unsigned int& bit_ofs, unsigned int& elmts);
-};
-
 
 class YamlTreeWalker
 {
-    const YamlNode* current_node;
-    const YamlNode* current_attr;
-    unsigned int    attr_bit_ofs;
-    unsigned int    level_bit_ofs;
-    unsigned int    elmts;
+    struct State {
+        const YamlNode* node;
+        unsigned int    bit_ofs;
+        uint8_t         attr_idx;
+        uint8_t         elmts;
+    };
 
-    NodeStack       stack;
-    unsigned int    level;
+    State   stack[NODE_STACK_DEPTH];
+    uint8_t stack_level;
+    uint8_t virt_level;
 
+    unsigned int getAttrOfs() { return stack[stack_level].bit_ofs; }
+    unsigned int getLevelOfs() {
+        if (stack_level < NODE_STACK_DEPTH - 1)
+            return stack[stack_level + 1].bit_ofs;
+        return 0;
+    }
+
+    void setNode(const YamlNode* node) { stack[stack_level].node = node; }
+    void setAttrIdx(uint8_t idx) { stack[stack_level].attr_idx = idx; }
+
+    void setAttrOfs(unsigned int ofs) { stack[stack_level].bit_ofs = ofs; }
+
+    void incAttr() { stack[stack_level].attr_idx++; }
+    void incElmts() { stack[stack_level].elmts++; }
+
+    bool empty() { return stack_level == NODE_STACK_DEPTH; }
+    bool full()  { return stack_level == 0; }
+    
+    // return true on success
+    bool push();
+    bool pop();
+    
 public:
-    YamlTreeWalker(const YamlNode* node);
+    YamlTreeWalker();
+
+    void reset(const YamlNode* node);
+
+    int getLevel() { return NODE_STACK_DEPTH - stack_level + virt_level; }
+    
+    const YamlNode* getNode() {
+        return stack[stack_level].node;
+    }
+
+    const YamlNode* getAttr() {
+        uint8_t idx = stack[stack_level].attr_idx;
+        return &(stack[stack_level].node->u._array.child[idx]);
+    }
+
+    unsigned int getElmts() {
+        return stack[stack_level].elmts;
+    }
 
     // Rewind to the current node's first attribute
     // (and reset the bit offset)
@@ -122,9 +141,10 @@ public:
     bool toParent();
     bool toChild();
 
-    bool nextArrayElmt();
+    bool toNextElmt();
+    void toNextAttr();
 
-    const YamlNode* getAttr() { return current_attr; }
+    bool finished() { return empty(); }
 };
 
 

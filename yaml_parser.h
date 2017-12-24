@@ -5,6 +5,7 @@
 #include "yaml_node.h"
 
 #define MAX_STR 16
+#define MAX_DEPTH 6 // 4 real + 2 virtual
 
 class YamlParser
 {
@@ -18,31 +19,44 @@ class YamlParser
         ps_CRLF
     };
 
-    ParserState state;
-    
+    // last indents for each level
+    uint8_t indents[MAX_DEPTH];
+
+    // current indent
     uint8_t indent;
-    uint8_t last_indent;
 
-    char    attr[MAX_STR];
-    uint8_t attr_len;
+    // parser state
+    uint8_t state;
 
-    char    val[MAX_STR];
-    uint8_t val_len;
+    // scratch buffer w/ 16 bytes
+    // used for attribute and values
+    char    scratch_buf[MAX_STR];
+    uint8_t scratch_len;
 
+    // tree iterator state
     YamlTreeWalker walker;
     
     // Reset parser state for next line
     void reset();
 
+    uint8_t getLastIndent();
+
 public:
+    // return false if error
+    typedef bool (*yaml_writer_func)(void* opaque, const char* str, size_t len);
+
     enum YamlResult {
         DONE_PARSING,
         CONTINUE_PARSING,
         STRING_OVERFLOW
     };
 
-    YamlParser(const YamlNode * node);
-    YamlResult parse(const char* buffer, unsigned int size, void* opaque);
+    YamlParser();
+
+    void init(const YamlNode * node);
+    
+    YamlResult parse(const char* buffer, unsigned int size, uint8_t* data);
+    bool       generate(uint8_t* data, yaml_writer_func wf, void* opaque);
 };
 
 

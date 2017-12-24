@@ -34,7 +34,7 @@ static const struct YamlNode mixerItems[] = {
     YAML_PADDING(  1 ),
     YAML_SIGNED(   "offset",     14 ),
     YAML_SIGNED(   "swtch",       9 ),
-    YAML_SIGNED(   "flightModes", 9 ),
+    YAML_UNSIGNED( "flightModes", 9 ),
 
     YAML_STRUCT( "curve", CurveRef, curveRefNodes ),
 
@@ -47,9 +47,27 @@ static const struct YamlNode mixerItems[] = {
     YAML_END
 };
 
+static const struct YamlNode inputItems[] = {
+    YAML_UNSIGNED( "mode",        2 ),
+    YAML_UNSIGNED( "scale",      14 ),
+    YAML_ENUM(     "srcRaw",     10,   srcRawEnum ),
+    YAML_SIGNED(   "carryTrim",   6 ),
+    YAML_UNSIGNED( "chn",         5 ),
+    YAML_SIGNED(   "swtch",       9 ),
+    YAML_UNSIGNED( "flightModes", 9 ),
+    YAML_SIGNED(   "weight",      8 ),
+    YAML_PADDING(  1 ),
+    YAML_STRING(   "name", LEN_EXPOMIX_NAME ),
+    YAML_SIGNED(   "offset",      8 ),
+
+    YAML_STRUCT( "curve", CurveRef, curveRefNodes ),
+    YAML_END
+};
+
 static const struct YamlNode modelItems[] = {
     YAML_STRING( "name", LEN_MODEL_NAME ),
-    YAML_ARRAY(  "mixers", MixData, MAX_MIXERS, mixerItems ),
+    YAML_ARRAY(  "mixers", MixData,  MAX_MIXERS, mixerItems ),
+    YAML_ARRAY(  "inputs", ExpoData, MAX_EXPOS,  inputItems ),
     YAML_END
 };
 
