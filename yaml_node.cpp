@@ -128,6 +128,22 @@ bool YamlTreeWalker::toNextElmt()
     return true;
 }
 
+bool YamlTreeWalker::isElmtEmpty(uint8_t* data)
+{
+    const struct YamlNode* node = getNode();
+    if (!virt_level && (node->type == YDT_ARRAY) && data) {
+
+        uint32_t bit_ofs = ((uint32_t)getElmts()) * ((uint32_t)getNode()->size)
+            + getLevelOfs();
+
+        return !node->u._array.is_active
+            // assume structs aligned on 8bit boundaries
+            || !node->u._array.is_active(data + (bit_ofs >> 3));
+    }
+
+    return false;
+}
+
 void YamlTreeWalker::toNextAttr()
 {
     const struct YamlNode* attr = getAttr();

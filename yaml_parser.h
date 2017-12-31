@@ -42,8 +42,6 @@ class YamlParser
     uint8_t getLastIndent();
 
 public:
-    // return false if error
-    typedef bool (*yaml_writer_func)(void* opaque, const char* str, size_t len);
 
     enum YamlResult {
         DONE_PARSING,
@@ -56,8 +54,13 @@ public:
     void init(const YamlNode * node);
     
     YamlResult parse(const char* buffer, unsigned int size, uint8_t* data);
-    bool       generate(uint8_t* data, yaml_writer_func wf, void* opaque);
+    bool       generate(uint8_t* data, YamlNode::writer_func wf, void* opaque);
 };
 
+int32_t  str2int(const char* val, uint8_t val_len);
+uint32_t str2uint(const char* val, uint8_t val_len);
+
+char* unsigned2str(uint32_t i);
+char* signed2str(int i);
 
 #endif

@@ -2,11 +2,13 @@
 #define _node_h_
 
 #include <stdint.h>
+#include <stddef.h>
 
 #define NODE_STACK_DEPTH 4
 
 enum YamlDataType {
     YDT_NONE=0,
+    YDT_IDX,
     YDT_SIGNED,
     YDT_UNSIGNED,
     YDT_STRING,
@@ -23,39 +25,63 @@ struct YamlIdStr
 
 struct YamlNode
 {
-    YamlDataType    type;
-    unsigned char   size;  // bits or bytes, depending on type
-    unsigned char   tag_len;
-    const char*     tag;
+    typedef bool (*is_active_func)(uint8_t* data);
+
+    typedef uint32_t (*cust_to_uint_func)(const char* val, uint8_t val_len);
+
+    // return false if error
+    typedef bool (*writer_func)(void* opaque, const char* str, size_t len);
+
+    typedef bool (*uint_to_cust_func)(uint32_t val, writer_func wf, void* opaque);
+    
+    uint8_t      type;
+    uint8_t      size;  // bits or bytes, depending on type
+    uint8_t      tag_len;
+    const char*  tag;
     union {
         struct {
-            unsigned char   elmts; // maximum number of elements
             const YamlNode* child;
+            is_active_func  is_active;
+            uint8_t         elmts; // maximum number of elements
         } _array;
 
         struct {
             const YamlIdStr* choices;
         } _enum;
+
+        struct {
+            cust_to_uint_func cust_to_uint;
+            uint_to_cust_func uint_to_cust;
+        } _cust;
     } u;
 };
 
 #define YAML_TAG(str)                           \
     .tag_len=(sizeof(str)-1), .tag=(str)
 
+#define YAML_IDX                                \
+    { .type=YDT_IDX , .size=0, YAML_TAG("idx") }
+
 #define YAML_SIGNED(tag, bits)                          \
-    { .type=YDT_SIGNED, .size=(bits), YAML_TAG(tag) }
+    { .type=YDT_SIGNED, .size=(bits), YAML_TAG(tag), .u={._cust={ NULL, NULL }} }
 
 #define YAML_UNSIGNED(tag, bits)                        \
-    { .type=YDT_UNSIGNED, .size=(bits), YAML_TAG(tag) }
+    { .type=YDT_UNSIGNED, .size=(bits), YAML_TAG(tag), .u={._cust={ NULL, NULL }} }
+
+#define YAML_SIGNED_CUST(tag, bits, f_cust_to_uint, f_uint_to_cust)     \
+    { .type=YDT_SIGNED, .size=(bits), YAML_TAG(tag), .u={._cust={ .cust_to_uint=f_cust_to_uint, .uint_to_cust=f_uint_to_cust }} }
+
+#define YAML_UNSIGNED_CUST(tag, bits, f_cust_to_uint, f_uint_to_cust)   \
+    { .type=YDT_UNSIGNED, .size=(bits), YAML_TAG(tag), .u={._cust={ .cust_to_uint=f_cust_to_uint, .uint_to_cust=f_uint_to_cust }} }
 
 #define YAML_STRING(tag, max_len)                               \
     { .type=YDT_STRING, .size=((max_len)<<3), YAML_TAG(tag) }
 
-#define YAML_STRUCT(tag, stype, nodes)                                   \
-    { .type=YDT_ARRAY, .size=(sizeof(stype)<<3), YAML_TAG(tag), .u={._array={ .elmts=1, .child=(nodes) }} }
+#define YAML_STRUCT(tag, stype, nodes, f_is_active)                     \
+    { .type=YDT_ARRAY, .size=(sizeof(stype)<<3), YAML_TAG(tag), .u={._array={ .child=(nodes), .is_active=(f_is_active), .elmts=1  }} }
 
-#define YAML_ARRAY(tag, stype, max_elmts, nodes)                         \
-    { .type=YDT_ARRAY, .size=(sizeof(stype)<<3), YAML_TAG(tag), .u={._array={ .elmts=(max_elmts), .child=(nodes) }} }
+#define YAML_ARRAY(tag, stype, max_elmts, nodes, f_is_active)           \
+    { .type=YDT_ARRAY, .size=(sizeof(stype)<<3), YAML_TAG(tag), .u={._array={ .child=(nodes), .is_active=(f_is_active), .elmts=(max_elmts) }} }
 
 #define YAML_ENUM(tag, bits, id_strs)                                   \
     { .type=YDT_ENUM, .size=(bits), YAML_TAG(tag), .u={ ._enum={ .choices=(id_strs) } } }
@@ -67,7 +93,7 @@ struct YamlNode
     { .type=YDT_NONE, .size=0 }
 
 #define YAML_ROOT(nodes)                                                \
-    { .type=YDT_ARRAY, .size=0, .tag_len=0, .tag=NULL, .u={._array={ .elmts=1, .child=(nodes) }} }
+    { .type=YDT_ARRAY, .size=0, .tag_len=0, .tag=NULL, .u={._array={ .child=(nodes), .is_active=NULL, .elmts=1 }} }
 
 
 class YamlTreeWalker
@@ -143,6 +169,8 @@ public:
 
     bool toNextElmt();
     void toNextAttr();
+
+    bool isElmtEmpty(uint8_t* data);
 
     bool finished() { return empty(); }
 };

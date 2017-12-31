@@ -1,6 +1,7 @@
 name: Test
 mixers:
-- weight: -150
+- idx: 2
+  weight: -150
   destCh: 1
   srcRaw: Thr
   carryTrim: 1
@@ -8,13 +9,16 @@ mixers:
   swtch: 55
   flightModes: 341
   name: IN1
-- destCh: 2
+- idx: 7
+  destCh: 2
   name: IN2
   srcRaw: Ail
   carryTrim: 0
 inputs:
 - name: Mix-1
-  weight: 100
+  weight: -GV2
+  srcRaw: Thr
 - name: Mix-2
-  switch SA-up
+  swtch: SA-up
   weight: GV1
+  srcRaw: Rud

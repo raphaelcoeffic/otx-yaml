@@ -8,7 +8,7 @@
 
 #define MIN(a,b) (a < b ? a : b)
 
-static int str2int(const char* val, uint8_t val_len)
+int str2int(const char* val, uint8_t val_len)
 {
     bool  neg = false;
     int i_val = 0;
@@ -24,7 +24,7 @@ static int str2int(const char* val, uint8_t val_len)
     return neg ? -i_val : i_val;
 }
 
-static uint32_t str2uint(const char* val, uint8_t val_len)
+uint32_t str2uint(const char* val, uint8_t val_len)
 {
     uint32_t i_val = 0;
     
@@ -43,22 +43,7 @@ static void copy_string(char* dst, const char* src, uint8_t len)
     dst[len] = '\0';
 }
 
-static void copy_signed(uint8_t* dst, uint32_t bit_ofs, uint8_t bits,
-                        const char* val, uint8_t val_len)
-{
-    int i = str2int(val, val_len);
-    yaml_put_bits(dst, (uint32_t)i, bit_ofs, bits);
-}
-
-static void copy_unsigned(uint8_t* dst, uint32_t bit_ofs, uint8_t bits,
-                          const char* val, uint8_t val_len)
-{
-    uint32_t i = str2uint(val, val_len);
-    yaml_put_bits(dst, i, bit_ofs, bits);
-}
-
-static void parse_enum(uint8_t* dst, uint32_t bit_ofs, uint8_t bits,
-                       const struct YamlIdStr* choices, const char* val, uint8_t val_len)
+static uint32_t parse_enum(const struct YamlIdStr* choices, const char* val, uint8_t val_len)
 {
     while (choices->str) {
 
@@ -68,42 +53,50 @@ static void parse_enum(uint8_t* dst, uint32_t bit_ofs, uint8_t bits,
 
         choices++;
     }
-            
-    yaml_put_bits(dst, choices->id, bit_ofs, bits);
+
+    return choices->id;
 }
 
 static void yaml_set_attr(uint8_t* ptr, uint32_t bit_ofs, const YamlNode* node,
                           const char* val, uint8_t val_len)
 {
+    uint32_t i = 0;
+
     printf("set(%s, %.*s, bit-ofs=%u, bits=%u)\n",
            node->tag, val_len, val, bit_ofs, node->size);
 
     ptr += bit_ofs >> 3UL;
     bit_ofs &= 0x07;
 
-    switch(node->type) {
-    case YDT_STRING:
+    if (node->type == YDT_STRING) {
         assert(!bit_ofs);
         copy_string((char*)ptr, val, MIN(val_len, node->size - 1));
-        break;
+        return;
+    }
+
+    switch(node->type) {
     case YDT_SIGNED:
-        copy_signed(ptr, bit_ofs, node->size, val, val_len);
+        i = node->u._cust.cust_to_uint ? node->u._cust.cust_to_uint(val, val_len)
+            : (uint32_t)str2int(val, val_len);
         break;
     case YDT_UNSIGNED:
-        copy_unsigned(ptr, bit_ofs, node->size, val, val_len);
+        i = node->u._cust.cust_to_uint ? node->u._cust.cust_to_uint(val, val_len)
+            : str2uint(val, val_len);
         break;
     case YDT_ENUM:
-        parse_enum(ptr, bit_ofs, node->size, node->u._enum.choices, val, val_len);
+        i = parse_enum(node->u._enum.choices, val, val_len);
         break;
     default:
         break;
     }
+
+    yaml_put_bits(ptr, i, bit_ofs, node->size);
 }
 
 static char int2str_buffer[MAX_STR] = {0};
 static const char _int2str_lookup[] = { '0', '1', '2', '3', '4', '5', '6' , '7', '8', '9' };
 
-static char* unsigned2str(unsigned int i)
+char* unsigned2str(unsigned int i)
 {
     char* c = &(int2str_buffer[MAX_STR-2]);
     do {
@@ -114,7 +107,7 @@ static char* unsigned2str(unsigned int i)
     return (c + 1);
 }
 
-static char* signed2str(int i)
+char* signed2str(int i)
 {
     if (i < 0) {
         char* c = unsigned2str(-i);
@@ -146,15 +139,13 @@ static const char* yaml_output_enum(uint32_t i, const struct YamlIdStr* choices)
 }
 
 static bool yaml_output_attr(uint8_t* ptr, uint32_t bit_ofs, const YamlNode* node,
-                             YamlParser::yaml_writer_func wf, void* opaque)
+                             YamlNode::writer_func wf, void* opaque)
 {
     if (node->type == YDT_NONE)
         return false;
     
     if (node->type == YDT_PADDING)
         return true;
-    
-    //printf("<%i> ", bit_ofs);
     
     ptr += bit_ofs >> 3UL;
     bit_ofs &= 0x07;
@@ -173,22 +164,28 @@ static bool yaml_output_attr(uint8_t* ptr, uint32_t bit_ofs, const YamlNode* nod
     }
     else {
         unsigned int i = yaml_get_bits(ptr, bit_ofs, node->size);
-        switch(node->type) {
-        case YDT_SIGNED:
-            i = to_signed(i, node->size);
-            p_out = signed2str((int)i);
-            break;
-        case YDT_UNSIGNED:
-            p_out = unsigned2str(i);
-            break;
-        case YDT_ARRAY:
-            break;
-        case YDT_ENUM:
-            p_out = yaml_output_enum(i, node->u._enum.choices);
-            break;
 
-        default:
-            break;
+        if ((node->type == YDT_SIGNED || node->type == YDT_UNSIGNED)
+            && node->u._cust.uint_to_cust) {
+            return node->u._cust.uint_to_cust(i, wf, opaque);
+        }
+        else {
+            switch(node->type) {
+            case YDT_SIGNED:
+                p_out = signed2str((int)to_signed(i, node->size));
+                break;
+            case YDT_UNSIGNED:
+                p_out = unsigned2str(i);
+                break;
+            case YDT_ARRAY:
+                break;
+            case YDT_ENUM:
+                p_out = yaml_output_enum(i, node->u._enum.choices);
+                break;
+
+            default:
+                break;
+            }
         }
     }
 
@@ -336,8 +333,14 @@ YamlParser::parse(const char* buffer, unsigned int size, uint8_t* data)
         case ps_Val:
             if (*c == ' ' || *c == '\r' || *c == '\n') {
                 // set attribute
-                yaml_set_attr(data, walker.getBitOffset(), walker.getAttr(),
-                              scratch_buf, scratch_len);
+                if (walker.getAttr()->type == YDT_IDX) {
+                    uint32_t i = str2uint(scratch_buf, scratch_len);
+                    while ((i > walker.getElmts()) && walker.toNextElmt());
+                }
+                else {
+                    yaml_set_attr(data, walker.getBitOffset(), walker.getAttr(),
+                                  scratch_buf, scratch_len);
+                }
                 state = ps_CRLF;
                 continue;
             }
@@ -346,16 +349,6 @@ YamlParser::parse(const char* buffer, unsigned int size, uint8_t* data)
                 
         case ps_CRLF:
             if (*c == '\n') {
-                // if (!walker.findNode(attr,attr_len)) {
-                //     printf("unknown attribute <%.*s>\n",attr_len,attr);
-                //     walker.rewind();
-                // }
-                // else {
-                //     for(int i=0; i < indent;i++) printf(" ");
-                //     yaml_set_attr(data, walker.getBitOffset(), walker.getAttr(),
-                //                   val, val_len);
-                // }
-
                 // reset state at EOL
                 reset();
             }
@@ -368,7 +361,7 @@ YamlParser::parse(const char* buffer, unsigned int size, uint8_t* data)
     return CONTINUE_PARSING;
 }
 
-bool YamlParser::generate(uint8_t* data, yaml_writer_func wf, void* opaque)
+bool YamlParser::generate(uint8_t* data, YamlNode::writer_func wf, void* opaque)
 {
     bool new_elmt = false;
     
@@ -387,12 +380,18 @@ bool YamlParser::generate(uint8_t* data, yaml_writer_func wf, void* opaque)
             if (node->type != YDT_ARRAY)
                 return false; // Error in the structure (probably)
 
-            if (walker.toNextElmt()) {
-
-                new_elmt = true;
-                continue;
+            // walk to next non-empty element
+            while (walker.toNextElmt()) {
+                if (!walker.isElmtEmpty(data)) {
+                    new_elmt = true;
+                    break;
+                }
             }
 
+            if (new_elmt)
+                continue;
+
+            // no next element, go up
             if (!walker.toParent()) {
 
                 return true;
@@ -403,6 +402,7 @@ bool YamlParser::generate(uint8_t* data, yaml_writer_func wf, void* opaque)
         }
 
         if (new_elmt) {
+
             for(int i=2; i < walker.getLevel(); i++)
                 if (!wf(opaque, "   ", 3))
                     return false;
@@ -418,15 +418,39 @@ bool YamlParser::generate(uint8_t* data, yaml_writer_func wf, void* opaque)
                     return false;
         }
 
-        if (!yaml_output_attr(data, walker.getBitOffset(), attr, wf, opaque))
+        if (attr->type == YDT_IDX) {
+
+            if (!wf(opaque, "idx: ", 5))
+                return false;
+
+            char* idx = unsigned2str(walker.getElmts());
+            if (!wf(opaque, idx, strlen(idx)))
+                return false;
+
+            if (!wf(opaque, "\r\n", 2))
+                return false;
+        }
+        else if (!yaml_output_attr(data, walker.getBitOffset(), attr, wf, opaque))
             return false; // TODO: error handling???
 
         if (attr->type == YDT_ARRAY) {
             if (!walker.toChild())
                 return false; // TODO: error handling???
 
-            new_elmt = true;
-            continue;
+            // walk to next non-empty element
+            do {
+                if (!walker.isElmtEmpty(data)) {
+                    new_elmt = true;
+                    break;
+                }
+            } while (walker.toNextElmt());
+
+            if (new_elmt)
+                continue;
+
+            // no next element, go up
+            if (!walker.toParent())
+                return true;
         }
 
         walker.toNextAttr();
