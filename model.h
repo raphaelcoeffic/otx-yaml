@@ -5,11 +5,13 @@
 
 #define PACK( __Declaration__ )      __Declaration__ __attribute__((__packed__))
 
-#define LEN_EXPOMIX_NAME  6
-#define LEN_MODEL_NAME   10
+#define LEN_EXPOMIX_NAME   6
+#define LEN_MODEL_NAME    10
+#define LEN_FUNCTION_NAME  6
 
-#define MAX_MIXERS  4
-#define MAX_EXPOS   8
+#define MAX_MIXERS            4
+#define MAX_EXPOS             8
+#define MAX_SPECIAL_FUNCTIONS 8
 
 enum MixSources {
     MIXSRC_NONE=0,
@@ -20,6 +22,41 @@ enum MixSources {
     MIXSRC_S1,
     MIXSRC_6POS,
     MIXSRC_S2
+};
+
+enum Functions {
+  // first the functions which need a checkbox
+  FUNC_OVERRIDE_CHANNEL,
+  FUNC_TRAINER,
+  FUNC_INSTANT_TRIM,
+  FUNC_RESET,
+  FUNC_SET_TIMER,
+  FUNC_ADJUST_GVAR,
+  FUNC_VOLUME,
+  FUNC_SET_FAILSAFE,
+  FUNC_RANGECHECK,
+  FUNC_BIND,
+  // then the other functions
+  FUNC_FIRST_WITHOUT_ENABLE,
+  FUNC_PLAY_SOUND = FUNC_FIRST_WITHOUT_ENABLE,
+  FUNC_PLAY_TRACK,
+  FUNC_PLAY_VALUE,
+  FUNC_RESERVE4,
+  FUNC_PLAY_SCRIPT,
+  FUNC_RESERVE5,
+  FUNC_BACKGND_MUSIC,
+  FUNC_BACKGND_MUSIC_PAUSE,
+  FUNC_VARIO,
+  FUNC_HAPTIC,
+  FUNC_LOGS,
+  FUNC_BACKLIGHT,
+#if defined(PCBTARANIS)
+  FUNC_SCREENSHOT,
+#endif
+#if defined(DEBUG)
+  FUNC_TEST, // should remain the last before MAX as not added in Companion
+#endif
+  FUNC_MAX
 };
 
 PACK(struct CurveRef {
@@ -61,10 +98,34 @@ PACK(struct ExpoData {
   CurveRef curve;
 });
 
+PACK(struct CustomFunctionData {
+  int16_t  swtch:9;
+  uint16_t func:7;
+  PACK(union {
+    PACK(struct {
+      char name[LEN_FUNCTION_NAME];
+    }) play;
+
+    PACK(struct {
+      int16_t val;
+      uint8_t mode;
+      uint8_t param;
+      int16_t spare;
+    }) all;
+
+    PACK(struct {
+      int32_t val1;
+      int16_t val2;
+    }) clear;
+  });
+  uint8_t active;
+});
+
 PACK(struct Model {
-    char     name[LEN_MODEL_NAME];
-    MixData  mixData[MAX_MIXERS];
-    ExpoData expoData[MAX_EXPOS];
+    char               name[LEN_MODEL_NAME];
+    MixData            mixData[MAX_MIXERS];
+    CustomFunctionData customFn[MAX_SPECIAL_FUNCTIONS];
+    ExpoData           expoData[MAX_EXPOS];
 });
 
 extern const struct YamlNode modelNode;

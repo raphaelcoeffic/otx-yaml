@@ -14,6 +14,7 @@ enum YamlDataType {
     YDT_STRING,
     YDT_ARRAY,
     YDT_ENUM,
+    YDT_UNION,
     YDT_PADDING
 };
 
@@ -33,6 +34,8 @@ struct YamlNode
     typedef bool (*writer_func)(void* opaque, const char* str, size_t len);
 
     typedef bool (*uint_to_cust_func)(uint32_t val, writer_func wf, void* opaque);
+
+    // typedef const struct YamlNode* (*select_member_func)(uint8_t* data);
     
     uint8_t      type;
     uint8_t      size;  // bits or bytes, depending on type
@@ -53,6 +56,11 @@ struct YamlNode
             cust_to_uint_func cust_to_uint;
             uint_to_cust_func uint_to_cust;
         } _cust;
+
+        // struct {
+        //     const YamlNode*    members;
+        //     select_member_func select_member;
+        // } _union;
     } u;
 };
 
@@ -85,6 +93,9 @@ struct YamlNode
 
 #define YAML_ENUM(tag, bits, id_strs)                                   \
     { .type=YDT_ENUM, .size=(bits), YAML_TAG(tag), .u={ ._enum={ .choices=(id_strs) } } }
+
+#define YAML_UNION(tag, nodes, f_is_active)                             \
+    { .type=YDT_UNION, .size=0, YAML_TAG(tag), .u={._array={ .child=(nodes), .is_active=(f_is_active), .elmts=1  }} }
 
 #define YAML_PADDING(bits)                      \
     { .type=YDT_PADDING, .size=(bits) }

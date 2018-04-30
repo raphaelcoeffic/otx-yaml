@@ -77,9 +77,81 @@ static const struct YamlNode inputItems[] = {
 static bool mixer_active(uint8_t* data);
 static bool input_active(uint8_t* data);
 
+static const struct YamlIdStr custFn[] = {
+    { FUNC_OVERRIDE_CHANNEL, "override-ch" },
+    { FUNC_TRAINER,          "trainer"  },
+    { FUNC_INSTANT_TRIM,     "inst-trim"  },
+    { FUNC_RESET,            "reset"  },
+    { FUNC_VARIO,            "vario"  },
+
+    // mandatory last entry with default value
+    { FUNC_MAX,              NULL   } // ???
+};
+
+static const struct YamlNode overrideChannelFn[] = {
+    YAML_SIGNED(   "val",  16 ),
+    YAML_PADDING(/* mode */ 8 ),
+    YAML_UNSIGNED( "ch",    8 ),
+    YAML_END
+};
+
+static const struct YamlNode trainerFn[] = {
+    YAML_PADDING(/* val, mode */ 24 ),
+    YAML_UNSIGNED( "ch",          8 ),
+    YAML_END
+};
+
+static const struct YamlNode resetFn[] = {
+    YAML_SIGNED( "val", 16 ),
+    YAML_END
+};
+
+static bool is_override_ch(uint8_t* data)
+{
+    CustomFunctionData* cust_data =
+        (CustomFunctionData*)(data - offsetof(CustomFunctionData,all));
+
+    return cust_data->func == FUNC_OVERRIDE_CHANNEL;
+}
+
+static bool is_trainer(uint8_t* data)
+{
+    CustomFunctionData* cust_data =
+        (CustomFunctionData*)(data - offsetof(CustomFunctionData,all));
+    return cust_data->func == FUNC_TRAINER;
+}
+
+static bool is_reset(uint8_t* data)
+{
+    CustomFunctionData* cust_data =
+        (CustomFunctionData*)(data - offsetof(CustomFunctionData,all));
+    return cust_data->func == FUNC_RESET;
+}
+
+static const struct YamlNode custFnItems[] = {
+    //YAML_IDX,
+    YAML_SIGNED( "swtch",     9 ),
+    YAML_ENUM(   "func",      7, custFn ),
+
+    YAML_UNION(   "overrideCh", overrideChannelFn, is_override_ch ),
+    YAML_UNION(   "trainer",    trainerFn, is_trainer ),
+    YAML_UNION(   "reset",      resetFn, is_reset ),
+    YAML_PADDING( 9<<3 ), // size of the union
+
+    YAML_UNSIGNED("active",   8 ),
+    YAML_END
+};
+
+static bool cust_fn_active(uint8_t* data)
+{
+    CustomFunctionData* cust_data = (CustomFunctionData*)data;
+    return cust_data->swtch;
+}
+
 static const struct YamlNode modelItems[] = {
     YAML_STRING( "name", LEN_MODEL_NAME ),
     YAML_ARRAY(  "mixers", MixData,  MAX_MIXERS, mixerItems, mixer_active ),
+    YAML_ARRAY(  "customFn", CustomFunctionData, MAX_SPECIAL_FUNCTIONS, custFnItems, cust_fn_active ),
     YAML_ARRAY(  "inputs", ExpoData, MAX_EXPOS,  inputItems, input_active ),
     YAML_END
 };

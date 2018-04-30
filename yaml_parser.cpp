@@ -147,9 +147,6 @@ static bool yaml_output_attr(uint8_t* ptr, uint32_t bit_ofs, const YamlNode* nod
     if (node->type == YDT_PADDING)
         return true;
     
-    ptr += bit_ofs >> 3UL;
-    bit_ofs &= 0x07;
-
     // output tag
     if (!wf(opaque, node->tag, node->tag_len))
         return false;
@@ -157,41 +154,47 @@ static bool yaml_output_attr(uint8_t* ptr, uint32_t bit_ofs, const YamlNode* nod
     if (!wf(opaque, ": ", 2))
         return false;
 
-    const char* p_out = NULL;
-    if (node->type == YDT_STRING) {
-        assert(!bit_ofs);
-        p_out = (const char*)ptr;
-    }
-    else {
-        unsigned int i = yaml_get_bits(ptr, bit_ofs, node->size);
+    if (ptr) {
+    
+        ptr += bit_ofs >> 3UL;
+        bit_ofs &= 0x07;
 
-        if ((node->type == YDT_SIGNED || node->type == YDT_UNSIGNED)
-            && node->u._cust.uint_to_cust) {
-            return node->u._cust.uint_to_cust(i, wf, opaque);
+        const char* p_out = NULL;
+        if (node->type == YDT_STRING) {
+            assert(!bit_ofs);
+            p_out = (const char*)ptr;
         }
         else {
-            switch(node->type) {
-            case YDT_SIGNED:
-                p_out = signed2str((int)to_signed(i, node->size));
-                break;
-            case YDT_UNSIGNED:
-                p_out = unsigned2str(i);
-                break;
-            case YDT_ARRAY:
-                break;
-            case YDT_ENUM:
-                p_out = yaml_output_enum(i, node->u._enum.choices);
-                break;
+            unsigned int i = yaml_get_bits(ptr, bit_ofs, node->size);
 
-            default:
-                break;
+            if ((node->type == YDT_SIGNED || node->type == YDT_UNSIGNED)
+                && node->u._cust.uint_to_cust) {
+                return node->u._cust.uint_to_cust(i, wf, opaque);
+            }
+            else {
+                switch(node->type) {
+                case YDT_SIGNED:
+                    p_out = signed2str((int)to_signed(i, node->size));
+                    break;
+                case YDT_UNSIGNED:
+                    p_out = unsigned2str(i);
+                    break;
+                case YDT_ENUM:
+                    p_out = yaml_output_enum(i, node->u._enum.choices);
+                    break;
+
+                case YDT_ARRAY:
+                case YDT_UNION:
+                default:
+                    break;
+                }
             }
         }
+
+        if (p_out && !wf(opaque, p_out, strlen(p_out)))
+            return false;
     }
 
-    if (p_out && !wf(opaque, p_out, strlen(p_out)))
-        return false;
-    
     if (!wf(opaque, "\r\n", 2))
         return false;
 
@@ -377,7 +380,7 @@ bool YamlParser::generate(uint8_t* data, YamlNode::writer_func wf, void* opaque)
         if (attr->type == YDT_NONE) {
 
             const struct YamlNode* node = walker.getNode();
-            if (node->type != YDT_ARRAY)
+            if (node->type != YDT_ARRAY && node->type != YDT_UNION)
                 return false; // Error in the structure (probably)
 
             // walk to next non-empty element
@@ -396,6 +399,37 @@ bool YamlParser::generate(uint8_t* data, YamlNode::writer_func wf, void* opaque)
 
                 return true;
             }
+
+            walker.toNextAttr();
+            continue;
+        }
+        else if (attr->type == YDT_ARRAY || attr->type == YDT_UNION) {
+
+            if (!walker.toChild())
+                return false; // TODO: error handling???
+
+            // walk to next non-empty element
+            do {
+                if (!walker.isElmtEmpty(data)) {
+                    new_elmt = true;
+                    break;
+                }
+            } while (walker.toNextElmt());
+
+            if (new_elmt) {
+                // non-empty element present in a new structure/array
+                // let's output the attribute
+                for(int i=2; i < walker.getLevel(); i++)
+                    if (!wf(opaque, "   ", 3))
+                        return false;
+                if (!yaml_output_attr(NULL, 0, walker.getNode(), wf, opaque))
+                    return false; // TODO: error handling???
+                continue;
+            }
+
+            // no next element, go up
+            if (!walker.toParent())
+                return true;
 
             walker.toNextAttr();
             continue;
@@ -432,26 +466,6 @@ bool YamlParser::generate(uint8_t* data, YamlNode::writer_func wf, void* opaque)
         }
         else if (!yaml_output_attr(data, walker.getBitOffset(), attr, wf, opaque))
             return false; // TODO: error handling???
-
-        if (attr->type == YDT_ARRAY) {
-            if (!walker.toChild())
-                return false; // TODO: error handling???
-
-            // walk to next non-empty element
-            do {
-                if (!walker.isElmtEmpty(data)) {
-                    new_elmt = true;
-                    break;
-                }
-            } while (walker.toNextElmt());
-
-            if (new_elmt)
-                continue;
-
-            // no next element, go up
-            if (!walker.toParent())
-                return true;
-        }
 
         walker.toNextAttr();
     }

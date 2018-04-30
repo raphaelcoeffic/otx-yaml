@@ -44,7 +44,8 @@ bool YamlTreeWalker::pop()
 // (and reset the bit offset)
 void YamlTreeWalker::rewind()
 {
-    if (getNode()->type == YDT_ARRAY) {
+    if (getNode()->type == YDT_ARRAY
+        || getNode()->type == YDT_UNION) {
         setAttrIdx(0);
         setAttrOfs(getLevelOfs());
     }
@@ -98,7 +99,9 @@ bool YamlTreeWalker::toParent()
 bool YamlTreeWalker::toChild()
 {
     const struct YamlNode* attr = getAttr();
-    if (!attr || attr->type != YDT_ARRAY) {
+    if (!attr
+        || (attr->type != YDT_ARRAY
+            && attr->type != YDT_UNION)) {
         virt_level++;
         return true;
     }
@@ -116,7 +119,8 @@ bool YamlTreeWalker::toChild()
 bool YamlTreeWalker::toNextElmt()
 {
     const struct YamlNode* node = getNode();
-    if (!virt_level && (node->type == YDT_ARRAY)) {
+    if (!virt_level && (node->type == YDT_ARRAY
+                        || node->type == YDT_UNION)) {
 
         if (getElmts() >= node->u._array.elmts - 1)
             return false;
@@ -130,18 +134,42 @@ bool YamlTreeWalker::toNextElmt()
 
 bool YamlTreeWalker::isElmtEmpty(uint8_t* data)
 {
-    const struct YamlNode* node = getNode();
-    if (!virt_level && (node->type == YDT_ARRAY) && data) {
+    if (virt_level)
+        return true;
 
-        uint32_t bit_ofs = ((uint32_t)getElmts()) * ((uint32_t)getNode()->size)
+    if (!data)
+        return false;
+    
+    const struct YamlNode* node = getNode();
+    uint32_t bit_ofs = 0;
+
+    if (node->type == YDT_ARRAY) {
+
+        bit_ofs = ((uint32_t)getElmts())
+            * ((uint32_t)getNode()->size)
             + getLevelOfs();
 
-        return !node->u._array.is_active
+        printf("ARRAY bit_ofs = %u\n",bit_ofs);
+        return node->u._array.is_active
             // assume structs aligned on 8bit boundaries
-            || !node->u._array.is_active(data + (bit_ofs >> 3));
+            && !node->u._array.is_active(data + (bit_ofs >> 3));
+    }
+    else if (node->type == YDT_UNION
+             && stack_level < NODE_STACK_DEPTH - 1) {
+
+        bit_ofs = ((uint32_t)stack[stack_level + 1].elmts)
+            * ((uint32_t)stack[stack_level + 1].node->size)
+            + stack[stack_level + 1].bit_ofs;
+
+        printf("UNION bit_ofs = %u\n", bit_ofs);
+    }
+    else {
+        return false;
     }
 
-    return false;
+    return node->u._array.is_active
+        // assume structs aligned on 8bit boundaries
+        && !node->u._array.is_active(data + (bit_ofs >> 3));
 }
 
 void YamlTreeWalker::toNextAttr()

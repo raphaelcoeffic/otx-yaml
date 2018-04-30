@@ -14,11 +14,12 @@ mixers:
   name: IN2
   srcRaw: Ail
   carryTrim: 0
-inputs:
-- name: Mix-1
-  weight: -GV2
-  srcRaw: Thr
-- name: Mix-2
-  swtch: SA-up
-  weight: GV1
-  srcRaw: Rud
+customFn:
+- swtch: 10
+  func: reset
+  reset:
+  - val: 3
+  active: 1
+- swtch: 5
+  func: inst-trim
+  active: 1
