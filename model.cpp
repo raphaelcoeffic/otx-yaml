@@ -129,7 +129,7 @@ static bool is_custFnData_clear(uint8_t* data)
 }
 
 static const struct YamlNode custFnItems[] = {
-    //YAML_IDX,
+    YAML_IDX,
     YAML_SIGNED( "swtch",     9 ),
     YAML_ENUM(   "func",      7, custFn ),
 

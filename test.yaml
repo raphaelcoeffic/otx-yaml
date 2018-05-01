@@ -15,11 +15,13 @@ mixers:
   srcRaw: Ail
   carryTrim: 0
 customFn:
-- swtch: 10
+- idx: 2
+  swtch: 10
   func: reset
   all:
   - val: 3
   active: 1
-- swtch: 5
+- idx: 4
+  swtch: 5
   func: inst-trim
   active: 1

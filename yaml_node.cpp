@@ -149,10 +149,7 @@ bool YamlTreeWalker::isElmtEmpty(uint8_t* data)
             * ((uint32_t)getNode()->size)
             + getLevelOfs();
 
-        printf("ARRAY bit_ofs = %u\n",bit_ofs);
-        return node->u._array.is_active
-            // assume structs aligned on 8bit boundaries
-            && !node->u._array.is_active(data + (bit_ofs >> 3));
+        //printf("ARRAY bit_ofs = %u\n",bit_ofs);
     }
     else if (node->type == YDT_UNION
              && stack_level < NODE_STACK_DEPTH - 1) {
@@ -161,7 +158,7 @@ bool YamlTreeWalker::isElmtEmpty(uint8_t* data)
             * ((uint32_t)stack[stack_level + 1].node->size)
             + stack[stack_level + 1].bit_ofs;
 
-        printf("UNION bit_ofs = %u\n", bit_ofs);
+        //printf("UNION bit_ofs = %u\n", bit_ofs);
     }
     else {
         return false;
