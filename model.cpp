@@ -88,44 +88,44 @@ static const struct YamlIdStr custFn[] = {
     { FUNC_MAX,              NULL   } // ???
 };
 
-static const struct YamlNode overrideChannelFn[] = {
+static const struct YamlNode custFnData_play[] = {
+    YAML_STRING( "name", LEN_FUNCTION_NAME ),
+    YAML_END
+};
+
+static const struct YamlNode custFnData_all[] = {
     YAML_SIGNED(   "val",  16 ),
-    YAML_PADDING(/* mode */ 8 ),
-    YAML_UNSIGNED( "ch",    8 ),
+    YAML_UNSIGNED( "mode",  8 ),
+    YAML_UNSIGNED( "param", 8 ),
     YAML_END
 };
 
-static const struct YamlNode trainerFn[] = {
-    YAML_PADDING(/* val, mode */ 24 ),
-    YAML_UNSIGNED( "ch",          8 ),
+static const struct YamlNode custFnData_clear[] = {
+    YAML_SIGNED(   "val1", 32 ),
+    YAML_SIGNED(   "val2", 16 ),
     YAML_END
 };
 
-static const struct YamlNode resetFn[] = {
-    YAML_SIGNED( "val", 16 ),
-    YAML_END
-};
-
-static bool is_override_ch(uint8_t* data)
+static bool is_custFnData_play(uint8_t* data)
 {
     CustomFunctionData* cust_data =
         (CustomFunctionData*)(data - offsetof(CustomFunctionData,all));
-
-    return cust_data->func == FUNC_OVERRIDE_CHANNEL;
+    return cust_data->func == FUNC_PLAY_SOUND
+        || cust_data->func == FUNC_PLAY_TRACK
+        || cust_data->func == FUNC_PLAY_SCRIPT;
 }
 
-static bool is_trainer(uint8_t* data)
+static bool is_custFnData_all(uint8_t* data)
 {
     CustomFunctionData* cust_data =
         (CustomFunctionData*)(data - offsetof(CustomFunctionData,all));
-    return cust_data->func == FUNC_TRAINER;
+    return !is_custFnData_play(data)
+        && (cust_data->func != FUNC_INSTANT_TRIM);
 }
 
-static bool is_reset(uint8_t* data)
+static bool is_custFnData_clear(uint8_t* data)
 {
-    CustomFunctionData* cust_data =
-        (CustomFunctionData*)(data - offsetof(CustomFunctionData,all));
-    return cust_data->func == FUNC_RESET;
+    return false;
 }
 
 static const struct YamlNode custFnItems[] = {
@@ -133,10 +133,10 @@ static const struct YamlNode custFnItems[] = {
     YAML_SIGNED( "swtch",     9 ),
     YAML_ENUM(   "func",      7, custFn ),
 
-    YAML_UNION(   "overrideCh", overrideChannelFn, is_override_ch ),
-    YAML_UNION(   "trainer",    trainerFn, is_trainer ),
-    YAML_UNION(   "reset",      resetFn, is_reset ),
-    YAML_PADDING( 9<<3 ), // size of the union
+    YAML_UNION(   "play",   custFnData_play, is_custFnData_play ),
+    YAML_UNION(   "all",     custFnData_all, is_custFnData_all ),
+    YAML_UNION(   "clear", custFnData_clear, is_custFnData_clear ),
+    YAML_PADDING( sizeof(CustomFunctionData::all)<<3 ), // size of the union
 
     YAML_UNSIGNED("active",   8 ),
     YAML_END

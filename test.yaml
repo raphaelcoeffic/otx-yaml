@@ -17,7 +17,7 @@ mixers:
 customFn:
 - swtch: 10
   func: reset
-  reset:
+  all:
   - val: 3
   active: 1
 - swtch: 5
