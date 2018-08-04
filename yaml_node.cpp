@@ -122,7 +122,7 @@ bool YamlTreeWalker::toNextElmt()
     if (!virt_level && (node->type == YDT_ARRAY
                         || node->type == YDT_UNION)) {
 
-        if (getElmts() >= node->u._array.elmts - 1)
+        if (getElmts() >= node->_array.elmts - 1)
             return false;
 
         incElmts();
@@ -164,9 +164,9 @@ bool YamlTreeWalker::isElmtEmpty(uint8_t* data)
         return false;
     }
 
-    return node->u._array.is_active
+    return node->_array.is_active
         // assume structs aligned on 8bit boundaries
-        && !node->u._array.is_active(data + (bit_ofs >> 3));
+        && !node->_array.is_active(data + (bit_ofs >> 3));
 }
 
 void YamlTreeWalker::toNextAttr()
@@ -175,7 +175,7 @@ void YamlTreeWalker::toNextAttr()
     unsigned int attr_bit_ofs = getAttrOfs();
 
     if (attr->type == YDT_ARRAY)
-        attr_bit_ofs += ((uint32_t)attr->u._array.elmts * (uint32_t)attr->size);
+        attr_bit_ofs += ((uint32_t)attr->_array.elmts * (uint32_t)attr->size);
     else
         attr_bit_ofs += (uint32_t)attr->size;
 

@@ -76,15 +76,15 @@ static void yaml_set_attr(uint8_t* ptr, uint32_t bit_ofs, const YamlNode* node,
 
     switch(node->type) {
     case YDT_SIGNED:
-        i = node->u._cust.cust_to_uint ? node->u._cust.cust_to_uint(val, val_len)
+        i = node->_cust.cust_to_uint ? node->_cust.cust_to_uint(val, val_len)
             : (uint32_t)str2int(val, val_len);
         break;
     case YDT_UNSIGNED:
-        i = node->u._cust.cust_to_uint ? node->u._cust.cust_to_uint(val, val_len)
+        i = node->_cust.cust_to_uint ? node->_cust.cust_to_uint(val, val_len)
             : str2uint(val, val_len);
         break;
     case YDT_ENUM:
-        i = parse_enum(node->u._enum.choices, val, val_len);
+        i = parse_enum(node->_enum.choices, val, val_len);
         break;
     default:
         break;
@@ -168,8 +168,8 @@ static bool yaml_output_attr(uint8_t* ptr, uint32_t bit_ofs, const YamlNode* nod
             unsigned int i = yaml_get_bits(ptr, bit_ofs, node->size);
 
             if ((node->type == YDT_SIGNED || node->type == YDT_UNSIGNED)
-                && node->u._cust.uint_to_cust) {
-                return node->u._cust.uint_to_cust(i, wf, opaque);
+                && node->_cust.uint_to_cust) {
+                return node->_cust.uint_to_cust(i, wf, opaque);
             }
             else {
                 switch(node->type) {
@@ -180,7 +180,7 @@ static bool yaml_output_attr(uint8_t* ptr, uint32_t bit_ofs, const YamlNode* nod
                     p_out = unsigned2str(i);
                     break;
                 case YDT_ENUM:
-                    p_out = yaml_output_enum(i, node->u._enum.choices);
+                    p_out = yaml_output_enum(i, node->_enum.choices);
                     break;
 
                 case YDT_ARRAY:
