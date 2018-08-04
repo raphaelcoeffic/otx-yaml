@@ -137,11 +137,30 @@ PACK(struct CustomFunctionData {
   uint8_t active;
 });
 
+#define LEN_SCRIPT_FILENAME            6
+#define LEN_SCRIPT_NAME                6
+#define MAX_SCRIPT_INPUTS              6
+#define MAX_SCRIPTS                    9
+
+typedef uint16_t source_t;
+
+union ScriptDataInput {
+  int16_t value;
+  source_t source;
+};
+
+PACK(struct ScriptData {
+  char            file[LEN_SCRIPT_FILENAME];
+  char            name[LEN_SCRIPT_NAME];
+  ScriptDataInput inputs[MAX_SCRIPT_INPUTS];
+});
+
 PACK(struct Model {
     char               name[LEN_MODEL_NAME];
     MixData            mixData[MAX_MIXERS];
     CustomFunctionData customFn[MAX_SPECIAL_FUNCTIONS];
     ExpoData           expoData[MAX_EXPOS];
+    ScriptData scriptsData[MAX_SCRIPTS];
 });
 
 extern const struct YamlNode modelNode;

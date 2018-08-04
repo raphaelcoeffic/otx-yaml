@@ -35,7 +35,7 @@ struct YamlNode
 
     typedef bool (*uint_to_cust_func)(uint32_t val, writer_func wf, void* opaque);
 
-    // typedef const struct YamlNode* (*select_member_func)(uint8_t* data);
+    typedef const struct YamlNode* (*select_member_func)(uint8_t* data);
     
     uint8_t      type;
     uint8_t      size;  // bits or bytes, depending on type
@@ -57,10 +57,10 @@ struct YamlNode
             uint_to_cust_func uint_to_cust;
         } _cust;
 
-        // struct {
-        //     const YamlNode*    members;
-        //     select_member_func select_member;
-        // } _union;
+        struct {
+            const YamlNode*    members;
+            select_member_func select_member;
+        } _union;
     };
 };
 
@@ -94,8 +94,8 @@ struct YamlNode
 #define YAML_ENUM(tag, bits, id_strs)                                   \
     { .type=YDT_ENUM, .size=(bits), YAML_TAG(tag), ._enum={ .choices=(id_strs) } }
 
-#define YAML_UNION(tag, nodes, f_is_active)                             \
-    { .type=YDT_UNION, .size=0, YAML_TAG(tag), ._array={ .child=(nodes), .is_active=(f_is_active), .elmts=1  } }
+#define YAML_UNION(tag, bits, nodes, f_sel_m)                       \
+    { .type=YDT_UNION, .size=(bits), YAML_TAG(tag), ._union={ .members=(nodes), .select_member=(f_sel_m) } }
 
 #define YAML_PADDING(bits)                      \
     { .type=YDT_PADDING, .size=(bits) }

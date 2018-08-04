@@ -128,15 +128,19 @@ static bool is_custFnData_clear(uint8_t* data)
     return false;
 }
 
+static const struct YamlNode anon_union_0[] = {
+    YAML_STRUCT( "play",  CustomFunctionData::play,  custFnData_play, is_custFnData_play ),
+    YAML_STRUCT( "all",   CustomFunctionData::all,    custFnData_all, is_custFnData_all ),
+    YAML_STRUCT( "clear", CustomFunctionData::clear, custFnData_clear, is_custFnData_clear ),
+    YAML_END
+};
+
 static const struct YamlNode custFnItems[] = {
     YAML_IDX,
     YAML_SIGNED( "swtch",     9 ),
     YAML_ENUM(   "func",      7, custFn ),
 
-    YAML_UNION(   "play",   custFnData_play, is_custFnData_play ),
-    YAML_UNION(   "all",     custFnData_all, is_custFnData_all ),
-    YAML_UNION(   "clear", custFnData_clear, is_custFnData_clear ),
-    YAML_PADDING( sizeof(CustomFunctionData::all)<<3 ), // size of the union
+    YAML_UNION(  "anon",     48, anon_union_0, NULL),
 
     YAML_UNSIGNED("active",   8 ),
     YAML_END
