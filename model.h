@@ -5,6 +5,22 @@
 
 #define PACK( __Declaration__ )      __Declaration__ __attribute__((__packed__))
 
+#if defined(YAML_GENERATOR)
+
+/* private definitions */
+#define _yaml_note(label) #label
+#define _yaml_attribute(attr) __attribute__((annotate(attr)))
+
+/* public definitions */
+#define ENUM(label) _yaml_attribute("enum:" _yaml_note(label))
+
+#else
+
+#define ENUM(label)
+
+#endif
+
+
 #define LEN_EXPOMIX_NAME   6
 #define LEN_MODEL_NAME    10
 #define LEN_FUNCTION_NAME  6
@@ -67,7 +83,7 @@ PACK(struct CurveRef {
 PACK(struct MixData {
   int16_t  weight:11;       // GV1=-1024, -GV1=1023
   uint16_t destCh:5;
-  uint16_t srcRaw:10;       // srcRaw=0 means not used
+  uint16_t srcRaw:10 ENUM(MixSources);       // srcRaw=0 means not used
   uint16_t carryTrim:1;
   uint16_t mixWarn:2;       // mixer warning
   uint16_t mltpx:2;         // multiplex method: 0 means +=, 1 means *=, 2 means :=
