@@ -429,6 +429,7 @@ bool YamlParser::generate(uint8_t* data, YamlNode::writer_func wf, void* opaque)
                     new_elmt = true;
                     break;
                 }
+                new_elmt = false;
             } while (walker.toNextElmt());
 
             if (new_elmt) {
