@@ -38,7 +38,7 @@ struct YamlNode
     typedef const struct YamlNode* (*select_member_func)(uint8_t* data);
     
     uint8_t      type;
-    uint8_t      size;  // bits or bytes, depending on type
+    uint16_t     size;  // bits or bytes, depending on type
     uint8_t      tag_len;
     const char*  tag;
     union {
