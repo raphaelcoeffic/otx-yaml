@@ -33,6 +33,8 @@ class YamlParser
     char    scratch_buf[MAX_STR];
     uint8_t scratch_len;
 
+    bool node_found;
+
     // tree iterator state
     YamlTreeWalker walker;
     

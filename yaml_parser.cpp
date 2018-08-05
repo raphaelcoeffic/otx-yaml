@@ -76,15 +76,15 @@ static void yaml_set_attr(uint8_t* ptr, uint32_t bit_ofs, const YamlNode* node,
 
     switch(node->type) {
     case YDT_SIGNED:
-        i = node->_cust.cust_to_uint ? node->_cust.cust_to_uint(val, val_len)
+        i = node->u._cust.cust_to_uint ? node->u._cust.cust_to_uint(val, val_len)
             : (uint32_t)str2int(val, val_len);
         break;
     case YDT_UNSIGNED:
-        i = node->_cust.cust_to_uint ? node->_cust.cust_to_uint(val, val_len)
+        i = node->u._cust.cust_to_uint ? node->u._cust.cust_to_uint(val, val_len)
             : str2uint(val, val_len);
         break;
     case YDT_ENUM:
-        i = parse_enum(node->_enum.choices, val, val_len);
+        i = parse_enum(node->u._enum.choices, val, val_len);
         break;
     default:
         break;
@@ -168,8 +168,8 @@ static bool yaml_output_attr(uint8_t* ptr, uint32_t bit_ofs, const YamlNode* nod
             unsigned int i = yaml_get_bits(ptr, bit_ofs, node->size);
 
             if ((node->type == YDT_SIGNED || node->type == YDT_UNSIGNED)
-                && node->_cust.uint_to_cust) {
-                return node->_cust.uint_to_cust(i, wf, opaque);
+                && node->u._cust.uint_to_cust) {
+                return node->u._cust.uint_to_cust(i, wf, opaque);
             }
             else {
                 switch(node->type) {
@@ -180,7 +180,7 @@ static bool yaml_output_attr(uint8_t* ptr, uint32_t bit_ofs, const YamlNode* nod
                     p_out = unsigned2str(i);
                     break;
                 case YDT_ENUM:
-                    p_out = yaml_output_enum(i, node->_enum.choices);
+                    p_out = yaml_output_enum(i, node->u._enum.choices);
                     break;
 
                 case YDT_ARRAY:
@@ -218,6 +218,7 @@ void YamlParser::reset()
     state = ps_Indent;
     indents[walker.getLevel() - 1] = indent;
     indent = scratch_len  = 0;
+    node_found = false;
 }
 
 uint8_t YamlParser::getLastIndent()
@@ -297,7 +298,7 @@ YamlParser::parse(const char* buffer, unsigned int size, uint8_t* data)
 
         case ps_Attr:
             if (*c == ' ') {// assumes nothing else comes after spaces start
-                walker.findNode(scratch_buf, scratch_len);
+                node_found = walker.findNode(scratch_buf, scratch_len);
                 state = ps_AttrSP;
                 break;
             }
@@ -306,14 +307,22 @@ YamlParser::parse(const char* buffer, unsigned int size, uint8_t* data)
             // trap
         case ps_AttrSP:
             if (*c == '\r' || *c == '\n') {
-                if (state == ps_Attr)
-                    walker.findNode(scratch_buf, scratch_len);
+                if (state == ps_Attr) {
+                    node_found = walker.findNode(scratch_buf, scratch_len);
+                    if (!node_found) {
+                        printf("Cound not find node '%.*s'", scratch_len, scratch_buf);
+                    }
+                }
                 state = ps_CRLF;
                 continue;
             }
             if (*c == ':') {
-                if (state == ps_Attr)
-                    walker.findNode(scratch_buf, scratch_len);
+                if (state == ps_Attr) {
+                    node_found = walker.findNode(scratch_buf, scratch_len);
+                    if (!node_found) {
+                        printf("Cound not find node '%.*s'", scratch_len, scratch_buf);
+                    }
+                }
                 state = ps_Sep;
                 break;
             }
@@ -324,7 +333,10 @@ YamlParser::parse(const char* buffer, unsigned int size, uint8_t* data)
                 break;
             if (*c == '\r' || *c == '\n'){
                 // set attribute val=NULL
-                yaml_set_attr(data, walker.getBitOffset(), walker.getAttr(), NULL, 0);
+                if (node_found) {
+                    yaml_set_attr(data, walker.getBitOffset(), walker.getAttr(), NULL, 0);
+                    walker.dump_stack();
+                }
                 state = ps_CRLF;
                 continue;
             }
@@ -341,8 +353,11 @@ YamlParser::parse(const char* buffer, unsigned int size, uint8_t* data)
                     while ((i > walker.getElmts()) && walker.toNextElmt());
                 }
                 else {
-                    yaml_set_attr(data, walker.getBitOffset(), walker.getAttr(),
-                                  scratch_buf, scratch_len);
+                    if (node_found) {
+                        yaml_set_attr(data, walker.getBitOffset(), walker.getAttr(),
+                                      scratch_buf, scratch_len);
+                        walker.dump_stack();
+                    }
                 }
                 state = ps_CRLF;
                 continue;
