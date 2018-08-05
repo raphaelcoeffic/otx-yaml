@@ -6,8 +6,10 @@
 
 YamlTreeWalker::YamlTreeWalker()
     : stack_level(NODE_STACK_DEPTH),
-      virt_level(0)
+      virt_level(0),
+      anon_union(0)
 {
+    memset(stack,0,sizeof(stack));
 }
 
 void YamlTreeWalker::reset(const YamlNode* node)
@@ -36,6 +38,7 @@ bool YamlTreeWalker::pop()
     if (empty())
         return false;
 
+    memset(&(stack[stack_level]), 0, sizeof(State));
     stack_level++;
     return true;
 }
@@ -80,7 +83,7 @@ bool YamlTreeWalker::findNode(const char* tag, uint8_t tag_len)
 // Get the current bit offset
 unsigned int YamlTreeWalker::getBitOffset()
 {
-    return ((uint32_t)getElmts()) * ((uint32_t)getNode()->size) + getAttrOfs();
+    return stack[stack_level].getOfs();
 }
 
 bool YamlTreeWalker::toParent()
@@ -92,6 +95,14 @@ bool YamlTreeWalker::toParent()
 
     if (!pop())
         return false;
+
+    // const YamlNode* node = getNode();
+    // if (!empty() && anon_union
+    //     && (node->type == YDT_UNION) && (node->tag_len == 0)) {
+
+    //     anon_union--;
+    //     return toParent();
+    // }
 
     return !empty();
 }
@@ -122,7 +133,12 @@ bool YamlTreeWalker::toNextElmt()
     if (!virt_level && (node->type == YDT_ARRAY
                         || node->type == YDT_UNION)) {
 
-        if (getElmts() >= node->_array.elmts - 1)
+        if (node->type == YDT_UNION) {
+            printf("YDT_UNION: max-elmts: %u\n", node->u._array.u._a.elmts);
+            return false;
+        }
+
+        if (getElmts() >= node->u._array.u._a.elmts - 1)
             return false;
 
         incElmts();
@@ -149,36 +165,70 @@ bool YamlTreeWalker::isElmtEmpty(uint8_t* data)
             * ((uint32_t)getNode()->size)
             + getLevelOfs();
 
-        //printf("ARRAY bit_ofs = %u\n",bit_ofs);
+        printf("ARRAY bit_ofs = %u (tag=%.*s;max-elmts=%u)",
+               bit_ofs,node->tag_len,node->tag,node->u._array.u._a.elmts);
+        dump_stack();
+
+        return node->u._array.u._a.is_active
+            // assume structs aligned on 8bit boundaries
+            && !node->u._array.u._a.is_active(data + (bit_ofs >> 3));
     }
     else if (node->type == YDT_UNION
              && stack_level < NODE_STACK_DEPTH - 1) {
 
-        bit_ofs = ((uint32_t)stack[stack_level + 1].elmts)
-            * ((uint32_t)stack[stack_level + 1].node->size)
-            + stack[stack_level + 1].bit_ofs;
+        bit_ofs = getLevelOfs();
 
-        //printf("UNION bit_ofs = %u\n", bit_ofs);
-    }
-    else {
-        return false;
+        printf("UNION bit_ofs = %u\n", bit_ofs);
+
+        return node->u._array.u.select_member;
+            // // assume structs aligned on 8bit boundaries
+            // && !node->_array.is_active(data + (bit_ofs >> 3));
     }
 
-    return node->_array.is_active
-        // assume structs aligned on 8bit boundaries
-        && !node->_array.is_active(data + (bit_ofs >> 3));
+    return false;
 }
 
 void YamlTreeWalker::toNextAttr()
 {
-    const struct YamlNode* attr = getAttr();
-    unsigned int attr_bit_ofs = getAttrOfs();
+    const struct YamlNode* node = getNode();
+    const struct YamlNode* attr = NULL;
 
-    if (attr->type == YDT_ARRAY)
-        attr_bit_ofs += ((uint32_t)attr->_array.elmts * (uint32_t)attr->size);
-    else
-        attr_bit_ofs += (uint32_t)attr->size;
+    if (node->type != YDT_UNION) {
+    
+        attr = getAttr();
+        unsigned int attr_bit_ofs = getAttrOfs();
 
-    setAttrOfs(attr_bit_ofs);
+        if (attr->type == YDT_ARRAY)
+            attr_bit_ofs += ((uint32_t)attr->u._array.u._a.elmts * (uint32_t)attr->size);
+        else
+            attr_bit_ofs += (uint32_t)attr->size;
+
+        setAttrOfs(attr_bit_ofs);
+    }
+
     incAttr();
+
+    // anonymous union handling
+    attr = getAttr();
+    if ((attr->type == YDT_UNION) && (attr->tag_len == 0)) {
+        toChild();
+        anon_union++;
+    }
+    else if ((attr->type == YDT_NONE)
+             && (getNode()->type == YDT_UNION)
+             && anon_union) {
+
+        anon_union--;
+        toParent();
+        toNextAttr();
+    }
+}
+
+void YamlTreeWalker::dump_stack()
+{
+    for (int i=0; i<NODE_STACK_DEPTH; i++) {
+        const State& st = stack[i];
+        printf(" [%p|%u|%i|%i]",st.node,st.bit_ofs,st.attr_idx,st.elmts);
+    }
+    printf("\n");
 }

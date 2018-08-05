@@ -35,7 +35,7 @@ void print_model()
         print_mixer_uattr(carryTrim);
         print_mixer_sattr(offset, 14);
         print_mixer_sattr(swtch, 9);
-        print_mixer_sattr(flightModes, 9);
+        print_mixer_uattr(flightModes);
         printf("\t" "name" "\t=\t" "%s" "\n", model.mixData[i].name);
     }
 }

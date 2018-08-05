@@ -137,12 +137,10 @@ static const struct YamlNode anon_union_0[] = {
 
 static const struct YamlNode custFnItems[] = {
     YAML_IDX,
-    YAML_SIGNED( "swtch",     9 ),
-    YAML_ENUM(   "func",      7, custFn ),
-
-    YAML_UNION(  "anon",     48, anon_union_0, NULL),
-
-    YAML_UNSIGNED("active",   8 ),
+    YAML_SIGNED(  "swtch",     9 ),
+    YAML_ENUM(    "func",      7, custFn ),
+    YAML_UNION(   "",         48, anon_union_0, NULL),
+    YAML_UNSIGNED("active",    8 ),
     YAML_END
 };
 

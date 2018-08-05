@@ -1,5 +1,6 @@
 
-CXXFLAGS += -g -std=c++11 -DYAML_GENERATOR
+CXXFLAGS += -g -std=c++11
+#-DYAML_GENERATOR
 LDFLAGS  += -lstdc++ -g
 
 otx-yaml: otx-yaml.o yaml_parser.o yaml_node.o yaml_bits.o model.o
