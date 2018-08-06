@@ -36,11 +36,20 @@ static uint32_t in_read_weight(const char* val, uint8_t val_len)
     return (uint32_t)str2int(val, val_len);
 }
 
+static int32_t to_signed(uint32_t i, uint8_t bits)
+{
+    if (i & (1 << (bits-1))) {
+        i |= 0xFFFFFFFF << bits;
+    }
+
+    return i;
+}
+
 static bool in_write_weight(uint32_t val, YamlNode::writer_func wf, void* opaque)
 {
-    int8_t sval = (int8_t)val;
-
-    if (sval > GVAR_SMALL-11) {
+    int32_t sval = to_signed(val,11);
+    
+    if (sval > GVAR_SMALL-11 && sval < GVAR_SMALL-1) {
         char n = GVAR_SMALL - sval + '0';
         if (!wf(opaque, "-GV", 3)
             || !wf(opaque, &n, 1)
@@ -48,7 +57,7 @@ static bool in_write_weight(uint32_t val, YamlNode::writer_func wf, void* opaque
             return false;
         return true;
     }
-    else if (sval < -GVAR_SMALL+11) {
+    else if (sval < -GVAR_SMALL+11 && sval > -GVAR_SMALL+1) {
         char n = val - GVAR_SMALL + '1';
         if (!wf(opaque, "GV", 2)
             || !wf(opaque, &n, 1)
@@ -57,24 +66,12 @@ static bool in_write_weight(uint32_t val, YamlNode::writer_func wf, void* opaque
         return true;
     }
 
-    char* s = signed2str(val);
+    char* s = signed2str(sval);
     if (!wf(opaque, s, strlen(s))
         || !wf(opaque, "\r\n", 2))
         return false;
     return true;
 }
-
-// static bool mixer_active(uint8_t* data)
-// {
-//     struct MixData* mix_data = (struct MixData*)data;
-//     return mix_data->srcRaw != 0;
-// }
-
-// static bool input_active(uint8_t* data)
-// {
-//     struct ExpoData* expo_data = (struct ExpoData*)data;
-//     return expo_data->srcRaw != 0;
-// }
 
 static bool is_custFnData_play(uint8_t* data)
 {
@@ -98,17 +95,6 @@ static bool is_custFnData_clear(uint8_t* data)
 {
     return false;
 }
-
-// static bool cust_fn_active(uint8_t* data)
-// {
-//     CustomFunctionData* cust_data = (CustomFunctionData*)data;
-//     return cust_data->swtch;
-// }
-
-// static bool string_active(uint8_t* data)
-// {
-//     return *data != '\0';
-// }
 
 #if defined(MANUAL_STRUCTS)
 

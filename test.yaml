@@ -11,6 +11,7 @@ mixData:
   flightModes: 341
   name: IN1
 - idx: 7
+  weight: -GV3
   destCh: 2
   name: IN2
   srcRaw: Ail

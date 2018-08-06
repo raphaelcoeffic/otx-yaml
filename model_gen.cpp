@@ -36,7 +36,7 @@ static const struct YamlNode struct_CurveRef[] = {
 };
 static const struct YamlNode struct_MixData[] = {
   YAML_IDX,
-  YAML_SIGNED( "weight", 11 ),
+  YAML_SIGNED_CUST( "weight", 11, in_read_weight, in_write_weight ),
   YAML_UNSIGNED( "destCh", 5 ),
   YAML_ENUM("srcRaw", 10, enum_MixSources),
   YAML_UNSIGNED( "carryTrim", 1 ),
