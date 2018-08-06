@@ -192,9 +192,9 @@ static const struct YamlNode custFnData_clear[] = {
 };
 
 static const struct YamlNode anon_union_0[] = {
-    YAML_STRUCT( "play",  CustomFunctionData::play,  custFnData_play, is_custFnData_play ),
-    YAML_STRUCT( "all",   CustomFunctionData::all,    custFnData_all, is_custFnData_all ),
-    YAML_STRUCT( "clear", CustomFunctionData::clear, custFnData_clear, is_custFnData_clear ),
+    YAML_STRUCT( "play",  sizeof(CustomFunctionData::play)<<3,  custFnData_play, is_custFnData_play ),
+    YAML_STRUCT( "all",   sizeof(CustomFunctionData::all)<<3,    custFnData_all, is_custFnData_all ),
+    YAML_STRUCT( "clear", sizeof(CustomFunctionData::clear)<<3, custFnData_clear, is_custFnData_clear ),
     YAML_END
 };
 
@@ -226,11 +226,11 @@ static const struct YamlNode struct_string_32[] = {
 };
 
 static const struct YamlNode modelItems[] = {
-    YAML_STRUCT( "header", ModelHeader, struct_ModelHeader, NULL),
-    YAML_ARRAY(  "mixers", MixData,  MAX_MIXERS, mixerItems, NULL /*mixer_active*/ ),
-    YAML_ARRAY(  "customFn", CustomFunctionData, MAX_SPECIAL_FUNCTIONS, custFnItems, NULL /*cust_fn_active*/ ),
-    YAML_ARRAY(  "inputNames", char[4], 32, struct_string_32, NULL /*string_active*/),
-    YAML_ARRAY(  "inputs", ExpoData, MAX_EXPOS,  inputItems, NULL /*input_active*/),
+    YAML_STRUCT( "header", sizeof(ModelHeader)<<3, struct_ModelHeader, NULL),
+    YAML_ARRAY(  "mixers", sizeof(MixData)<<3,  MAX_MIXERS, mixerItems, NULL),
+    YAML_ARRAY(  "customFn", sizeof(CustomFunctionData)<<3, MAX_SPECIAL_FUNCTIONS, custFnItems, NULL),
+    YAML_ARRAY(  "inputNames", sizeof(char[4])<<3, 32, struct_string_32, NULL),
+    YAML_ARRAY(  "inputs", sizeof(ExpoData)<<3, MAX_EXPOS,  inputItems, NULL),
     YAML_END
 };
 
