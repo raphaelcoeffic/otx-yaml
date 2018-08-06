@@ -299,6 +299,9 @@ YamlParser::parse(const char* buffer, unsigned int size, uint8_t* data)
         case ps_Attr:
             if (*c == ' ') {// assumes nothing else comes after spaces start
                 node_found = walker.findNode(scratch_buf, scratch_len);
+                if (!node_found) {
+                    printf("Could not find node '%.*s' (1)\n", scratch_len, scratch_buf);
+                }
                 state = ps_AttrSP;
                 break;
             }
@@ -310,7 +313,7 @@ YamlParser::parse(const char* buffer, unsigned int size, uint8_t* data)
                 if (state == ps_Attr) {
                     node_found = walker.findNode(scratch_buf, scratch_len);
                     if (!node_found) {
-                        printf("Cound not find node '%.*s'", scratch_len, scratch_buf);
+                        printf("Could not find node '%.*s' (2)\n", scratch_len, scratch_buf);
                     }
                 }
                 state = ps_CRLF;
@@ -320,7 +323,7 @@ YamlParser::parse(const char* buffer, unsigned int size, uint8_t* data)
                 if (state == ps_Attr) {
                     node_found = walker.findNode(scratch_buf, scratch_len);
                     if (!node_found) {
-                        printf("Cound not find node '%.*s'", scratch_len, scratch_buf);
+                        printf("Could not find node '%.*s' (3)\n", scratch_len, scratch_buf);
                     }
                 }
                 state = ps_Sep;
@@ -335,7 +338,7 @@ YamlParser::parse(const char* buffer, unsigned int size, uint8_t* data)
                 // set attribute val=NULL
                 if (node_found) {
                     yaml_set_attr(data, walker.getBitOffset(), walker.getAttr(), NULL, 0);
-                    walker.dump_stack();
+                    //walker.dump_stack();
                 }
                 state = ps_CRLF;
                 continue;
@@ -356,7 +359,7 @@ YamlParser::parse(const char* buffer, unsigned int size, uint8_t* data)
                     if (node_found) {
                         yaml_set_attr(data, walker.getBitOffset(), walker.getAttr(),
                                       scratch_buf, scratch_len);
-                        walker.dump_stack();
+                        //walker.dump_stack();
                     }
                 }
                 state = ps_CRLF;

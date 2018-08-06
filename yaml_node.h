@@ -38,7 +38,7 @@ struct YamlNode
     typedef const struct YamlNode* (*select_member_func)(uint8_t* data);
     
     uint8_t      type;
-    uint16_t     size;  // bits or bytes, depending on type
+    uint16_t     size;  // bits
     uint8_t      tag_len;
     const char*  tag;
     union {
@@ -85,11 +85,11 @@ struct YamlNode
 #define YAML_STRING(tag, max_len)                               \
     { .type=YDT_STRING, .size=((max_len)<<3), YAML_TAG(tag) }
 
-#define YAML_STRUCT(tag, stype, nodes, f_is_active)                     \
-    { .type=YDT_ARRAY, .size=(sizeof(stype)<<3), YAML_TAG(tag), .u={._array={ .child=(nodes), .u={ ._a={.is_active=(f_is_active), .elmts=1 }}}} }
+#define YAML_STRUCT(tag, bits, nodes, f_is_active)                     \
+    { .type=YDT_ARRAY, .size=(bits), YAML_TAG(tag), .u={._array={ .child=(nodes), .u={ ._a={.is_active=(f_is_active), .elmts=1 }}}} }
 
-#define YAML_ARRAY(tag, stype, max_elmts, nodes, f_is_active)           \
-    { .type=YDT_ARRAY, .size=(sizeof(stype)<<3), YAML_TAG(tag), .u={._array={ .child=(nodes), .u={ ._a={.is_active=(f_is_active), .elmts=(max_elmts) }}}} }
+#define YAML_ARRAY(tag, bits, max_elmts, nodes, f_is_active)           \
+    { .type=YDT_ARRAY, .size=(bits), YAML_TAG(tag), .u={._array={ .child=(nodes), .u={ ._a={.is_active=(f_is_active), .elmts=(max_elmts) }}}} }
 
 #define YAML_ENUM(tag, bits, id_strs)                                   \
     { .type=YDT_ENUM, .size=(bits), YAML_TAG(tag), .u={._enum={ .choices=(id_strs) }} }

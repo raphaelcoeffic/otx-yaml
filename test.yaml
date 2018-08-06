@@ -1,5 +1,6 @@
-name: Test
-mixers:
+header:
+- name: Test
+mixData:
 - idx: 2
   weight: -150
   destCh: 1
@@ -14,6 +15,11 @@ mixers:
   name: IN2
   srcRaw: Ail
   carryTrim: 0
+inputNames:
+- val:
+- val: IN2
+- val:
+- val: IN1
 customFn:
 - idx: 2
   swtch: 10

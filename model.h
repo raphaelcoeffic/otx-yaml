@@ -13,10 +13,14 @@
 
 /* public definitions */
 #define ENUM(label) _yaml_attribute("enum:" _yaml_note(label))
+#define USE_IDX     _yaml_attribute("idx:true")
+#define FUNC(name)  _yaml_attribute("func:" _yaml_note(name))
 
 #else
 
 #define ENUM(label)
+#define USE_IDX
+#define FUNC(name)
 
 #endif
 
@@ -97,7 +101,7 @@ PACK(struct MixData {
   uint8_t  speedUp;
   uint8_t  speedDown;
   char     name[LEN_EXPOMIX_NAME];
-});
+}) USE_IDX;
 
 PACK(struct ExpoData {
   uint16_t mode:2;
@@ -120,22 +124,22 @@ PACK(struct CustomFunctionData {
   PACK(union {
     PACK(struct {
       char name[LEN_FUNCTION_NAME];
-    }) play;
+    }) play FUNC(is_custFnData_play);
 
     PACK(struct {
       int16_t val;
       uint8_t mode;
       uint8_t param;
       int16_t spare;
-    }) all;
+    }) all FUNC(is_custFnData_all);
 
     PACK(struct {
       int32_t val1;
       int16_t val2;
-    }) clear;
+    }) clear FUNC(is_custFnData_clear);
   });
   uint8_t active;
-});
+}) USE_IDX;
 
 #define LEN_SCRIPT_FILENAME            6
 #define LEN_SCRIPT_NAME                6
@@ -155,10 +159,18 @@ PACK(struct ScriptData {
   ScriptDataInput inputs[MAX_SCRIPT_INPUTS];
 });
 
+#define NUM_MODULES 2
+
+PACK(struct ModelHeader {
+  char      name[LEN_MODEL_NAME]; // must be first for eeLoadModelName
+  uint8_t   modelId[NUM_MODULES];
+});
+
 PACK(struct Model {
-    char               name[LEN_MODEL_NAME];
+    ModelHeader        header;
     MixData            mixData[MAX_MIXERS];
     CustomFunctionData customFn[MAX_SPECIAL_FUNCTIONS];
+    char               inputNames[4][32] USE_IDX;
     ExpoData           expoData[MAX_EXPOS];
     ScriptData scriptsData[MAX_SCRIPTS];
 });

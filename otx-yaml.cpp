@@ -26,7 +26,7 @@ static int32_t to_signed(uint32_t i, uint8_t bits)
 
 void print_model()
 {
-    printf("%s\n",model.name);
+    printf("%s\n",model.header.name);
     for(int i=0; i < MAX_MIXERS; i++) {
         printf(" mixer %i\n",i);
         print_mixer_sattr(weight, 11);

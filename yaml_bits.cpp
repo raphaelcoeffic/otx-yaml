@@ -65,3 +65,16 @@ uint32_t yaml_get_bits(uint8_t* src, uint32_t bit_ofs, uint8_t bits)
 
     return i;
 }
+
+bool yaml_is_zero(uint8_t* data, uint8_t bits)
+{
+    uint8_t res = 0;
+
+    // assume bits is a multiple of 8
+    while(bits >= 8) {
+        res |= *(data++);
+        bits -= 8;
+    }
+
+    return !res;
+}
