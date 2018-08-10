@@ -157,14 +157,17 @@ class YamlTreeWalker
     bool push();
     bool pop();
     
+    // Rewind to the current node's first attribute
+    // (and reset the bit offset)
+    void rewind();
+
 public:
     YamlTreeWalker();
 
     void reset(const YamlNode* node, uint8_t* data);
 
     int getLevel() {
-        return NODE_STACK_DEPTH - stack_level
-            + virt_level - anon_union;
+        return NODE_STACK_DEPTH - stack_level + virt_level;
     }
     
     const YamlNode* getNode() {
@@ -179,10 +182,6 @@ public:
     unsigned int getElmts() {
         return stack[stack_level].elmts;
     }
-
-    // Rewind to the current node's first attribute
-    // (and reset the bit offset)
-    void rewind();
 
     // Increment the cursor until a match is found or the end of
     // the current collection (node of type YDT_NONE) is reached.
@@ -200,6 +199,8 @@ public:
     void toNextAttr();
 
     bool isElmtEmpty(uint8_t* data);
+
+    //bool finished() { return empty(); }
 
     void setAttrValue(char* buf, uint8_t len);
 

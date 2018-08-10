@@ -278,9 +278,7 @@ bool YamlTreeWalker::toParent()
 bool YamlTreeWalker::toChild()
 {
     const struct YamlNode* attr = getAttr();
-    if (!attr
-        || (attr->type != YDT_ARRAY
-            && attr->type != YDT_UNION)) {
+    if (attr->type != YDT_ARRAY && attr->type != YDT_UNION) {
         virt_level++;
         return true;
     }
@@ -298,11 +296,9 @@ bool YamlTreeWalker::toChild()
 bool YamlTreeWalker::toNextElmt()
 {
     const struct YamlNode* node = getNode();
-    if (!virt_level && (node->type == YDT_ARRAY
-                        || node->type == YDT_UNION)) {
+    if (!virt_level && (node->type == YDT_ARRAY || node->type == YDT_UNION)) {
 
         if (node->type == YDT_UNION) {
-            //printf("YDT_UNION: max-elmts: %u\n", node->u._array.u._a.elmts);
             return false;
         }
 
@@ -333,10 +329,6 @@ bool YamlTreeWalker::isElmtEmpty(uint8_t* data)
             * ((uint32_t)getNode()->size)
             + getLevelOfs();
 
-        // printf("ARRAY bit_ofs = %u (tag=%.*s;max-elmts=%u)",
-        //        bit_ofs,node->tag_len,node->tag,node->u._array.u._a.elmts);
-        // dump_stack();
-
         // assume structs aligned on 8bit boundaries
         if (node->u._array.u._a.is_active)
             return !node->u._array.u._a.is_active(data + (bit_ofs >> 3));
@@ -348,9 +340,7 @@ bool YamlTreeWalker::isElmtEmpty(uint8_t* data)
 
         bit_ofs = getLevelOfs();
 
-        // printf("UNION bit_ofs = %u\n", bit_ofs);
-
-        return node->u._array.u.select_member;
+        return node->u._array.u.select_member; //TODO!
             // // assume structs aligned on 8bit boundaries
             // && !node->_array.is_active(data + (bit_ofs >> 3));
     }
