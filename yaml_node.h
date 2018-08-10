@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#include "yaml_parser.h"
+
 #define NODE_STACK_DEPTH 4
 
 enum YamlDataType {
@@ -130,6 +132,8 @@ class YamlTreeWalker
     uint8_t virt_level;
     uint8_t anon_union;
 
+    uint8_t* data;
+
     unsigned int getAttrOfs() { return stack[stack_level].bit_ofs; }
     unsigned int getLevelOfs() {
         if (stack_level < NODE_STACK_DEPTH - 1) {
@@ -156,7 +160,7 @@ class YamlTreeWalker
 public:
     YamlTreeWalker();
 
-    void reset(const YamlNode* node);
+    void reset(const YamlNode* node, uint8_t* data);
 
     int getLevel() {
         return NODE_STACK_DEPTH - stack_level
@@ -197,10 +201,13 @@ public:
 
     bool isElmtEmpty(uint8_t* data);
 
-    bool finished() { return empty(); }
+    void setAttrValue(char* buf, uint8_t len);
+
+    bool generate(YamlNode::writer_func wf, void* opaque);
 
     void dump_stack();
 };
 
+extern const YamlParserCalls YamlTreeWalkerCalls;
 
 #endif

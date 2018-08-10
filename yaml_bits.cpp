@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "yaml_bits.h"
+#include "yaml_parser.h"
 
 #define MASK_LOWER(bits) ((1 << (bits)) - 1)
 #define MASK_UPPER(bits) (0xFF << bits)
@@ -78,3 +79,67 @@ bool yaml_is_zero(uint8_t* data, uint8_t bits)
 
     return !res;
 }
+
+int32_t yaml_str2int(const char* val, uint8_t val_len)
+{
+    bool  neg = false;
+    int i_val = 0;
+    
+    for(uint8_t i=0; i < val_len; i++) {
+        if (val[i] == '-')
+            neg = true;
+        else if (val[i] >= '0' && val[i] <= '9') {
+            i_val = i_val * 10 + (val[i] - '0');
+        }
+    }
+
+    return neg ? -i_val : i_val;
+}
+
+uint32_t yaml_str2uint(const char* val, uint8_t val_len)
+{
+    uint32_t i_val = 0;
+    
+    for(uint8_t i=0; i < val_len; i++) {
+        if (val[i] >= '0' && val[i] <= '9') {
+            i_val = i_val * 10 + (val[i] - '0');
+        }
+    }
+
+    return i_val;
+}
+
+static char int2str_buffer[MAX_STR] = {0};
+static const char _int2str_lookup[] = { '0', '1', '2', '3', '4', '5', '6' , '7', '8', '9' };
+
+char* yaml_unsigned2str(unsigned int i)
+{
+    char* c = &(int2str_buffer[MAX_STR-2]);
+    do {
+        *(c--) = _int2str_lookup[i % 10];
+        i = i / 10;
+    } while((c > int2str_buffer) && i);
+
+    return (c + 1);
+}
+
+char* yaml_signed2str(int i)
+{
+    if (i < 0) {
+        char* c = yaml_unsigned2str(-i);
+        *(--c) = '-';
+        return c;
+    }
+
+    return yaml_unsigned2str((unsigned int)i);
+}
+
+int32_t yaml_to_signed(uint32_t i, uint8_t bits)
+{
+    if (i & (1 << (bits-1))) {
+        i |= 0xFFFFFFFF << bits;
+    }
+
+    return i;
+}
+

@@ -48,8 +48,11 @@ bool print_writer(void* opaque, const char* str, size_t len)
 
 int main()
 {
-    YamlParser yp;
-    yp.init(&modelNode);
+    YamlParser     yp;
+    YamlTreeWalker tree;
+
+    tree.reset(&modelNode, (uint8_t*)&model);
+    yp.init(&YamlTreeWalkerCalls, &tree);
 
     char   buffer[32];
     FILE * f = fopen("./test.yaml", "r");
@@ -59,7 +62,7 @@ int main()
         size_t size = fread(buffer, 1, sizeof(buffer), f);
         if (size == 0) break;
 
-        if (yp.parse(buffer,(unsigned int)size, (uint8_t*)&model)
+        if (yp.parse(buffer,(unsigned int)size)
             != YamlParser::CONTINUE_PARSING)
             break;
     } // until file consumed
@@ -70,8 +73,8 @@ int main()
 
     printf("###############################\n");
 
-    yp.init(&modelNode);
-    yp.generate((uint8_t*)&model,print_writer,NULL);
+    tree.reset(&modelNode, (uint8_t*)&model);
+    tree.generate(print_writer, NULL);
 
     return 0;
 }

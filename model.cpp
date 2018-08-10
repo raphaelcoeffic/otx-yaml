@@ -33,21 +33,12 @@ static uint32_t in_read_weight(const char* val, uint8_t val_len)
         return -GVAR_SMALL + (val[2] - '1'); //  GVx => -128 + (x-1)
     }
 
-    return (uint32_t)str2int(val, val_len);
-}
-
-static int32_t to_signed(uint32_t i, uint8_t bits)
-{
-    if (i & (1 << (bits-1))) {
-        i |= 0xFFFFFFFF << bits;
-    }
-
-    return i;
+    return (uint32_t)yaml_str2int(val, val_len);
 }
 
 static bool in_write_weight(uint32_t val, YamlNode::writer_func wf, void* opaque)
 {
-    int32_t sval = to_signed(val,11);
+    int32_t sval = yaml_to_signed(val,11);
     
     if (sval > GVAR_SMALL-11 && sval < GVAR_SMALL-1) {
         char n = GVAR_SMALL - sval + '0';
@@ -66,7 +57,7 @@ static bool in_write_weight(uint32_t val, YamlNode::writer_func wf, void* opaque
         return true;
     }
 
-    char* s = signed2str(sval);
+    char* s = yaml_signed2str(sval);
     if (!wf(opaque, s, strlen(s))
         || !wf(opaque, "\r\n", 2))
         return false;
