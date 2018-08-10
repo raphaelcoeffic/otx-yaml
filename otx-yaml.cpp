@@ -5,7 +5,7 @@
 #include "yaml_parser.h"
 #include "yaml_node.h"
 #include "model.h"
-
+#include "modelslist.h"
 
 Model model;
 
@@ -49,6 +49,7 @@ bool print_writer(void* opaque, const char* str, size_t len)
 int main()
 {
     YamlParser     yp;
+#if 1
     YamlTreeWalker tree;
 
     tree.reset(&modelNode, (uint8_t*)&model);
@@ -75,6 +76,24 @@ int main()
 
     tree.reset(&modelNode, (uint8_t*)&model);
     tree.generate(print_writer, NULL);
+#else
+    yp.init(get_modelslist_parser_calls(), get_modelslist_iter());
+
+    char   buffer[32];
+    FILE * f = fopen("./modelslist.yml", "r");
+    
+    while(1) {
+
+        size_t size = fread(buffer, 1, sizeof(buffer), f);
+        if (size == 0) break;
+
+        if (yp.parse(buffer,(unsigned int)size)
+            != YamlParser::CONTINUE_PARSING)
+            break;
+    } // until file consumed
+
+    modelslist.dump();
+#endif
 
     return 0;
 }

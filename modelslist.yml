@@ -1,0 +1,8 @@
+- name: Gliders
+  - filename: model2.yml
+    name: Pili B4
+  - filename: model4.yml
+    name: Rotmilan
+- name: Motors
+  - filename: model1.yml
+    name: Piper Cub
