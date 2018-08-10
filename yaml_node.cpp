@@ -187,8 +187,9 @@ YamlTreeWalker::YamlTreeWalker()
     memset(stack,0,sizeof(stack));
 }
 
-void YamlTreeWalker::reset(const YamlNode* node)
+void YamlTreeWalker::reset(const YamlNode* node, uint8_t* data)
 {
+    this->data = data;
     stack_level = NODE_STACK_DEPTH;
     virt_level  = 0;
 
@@ -270,15 +271,7 @@ bool YamlTreeWalker::toParent()
 
     if (!pop())
         return false;
-
-    // const YamlNode* node = getNode();
-    // if (!empty() && anon_union
-    //     && (node->type == YDT_UNION) && (node->tag_len == 0)) {
-
-    //     anon_union--;
-    //     return toParent();
-    // }
-
+    
     return !empty();
 }
 
