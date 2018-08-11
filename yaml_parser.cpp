@@ -72,8 +72,10 @@ YamlParser::parse(const char* buffer, unsigned int size)
                     }
                 } while (indent < getLastIndent());
 
-                if (!calls->to_next_elmt(ctx)) {
-                    return DONE_PARSING;
+                if (state == ps_Dash) {
+                    if (!calls->to_next_elmt(ctx)) {
+                        return DONE_PARSING;
+                    }
                 }
             }
             // go down one level
@@ -89,8 +91,10 @@ YamlParser::parse(const char* buffer, unsigned int size)
                 }
             }
             // same level, next element
-            else if (!calls->to_next_elmt(ctx)) {
-                return DONE_PARSING;
+            else  if (state == ps_Dash) {
+                if (!calls->to_next_elmt(ctx)) {
+                    return DONE_PARSING;
+                }
             }
 
             state = ps_Attr;
