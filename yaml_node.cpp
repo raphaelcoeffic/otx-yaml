@@ -181,8 +181,7 @@ const YamlParserCalls YamlTreeWalkerCalls = {
 
 YamlTreeWalker::YamlTreeWalker()
     : stack_level(NODE_STACK_DEPTH),
-      virt_level(0),
-      anon_union(0)
+      virt_level(0)
 {
     memset(stack,0,sizeof(stack));
 }
@@ -368,19 +367,6 @@ void YamlTreeWalker::toNextAttr()
 
     incAttr();
 
-    // anonymous union handling
-    attr = getAttr();
-    if ((attr->type == YDT_UNION) && (attr->tag_len == 0)) {
-        toChild();
-        anon_union++;
-    }
-    else if ((attr->type == YDT_NONE)
-             && (getNode()->type == YDT_UNION)
-             && anon_union) {
-
-        anon_union--;
-        toParent();
-    }
 }
 
 void YamlTreeWalker::setAttrValue(char* buf, uint8_t len)

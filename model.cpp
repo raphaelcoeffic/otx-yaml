@@ -87,7 +87,7 @@ static bool is_custFnData_clear(uint8_t* data)
     return false;
 }
 
-#if defined(MANUAL_STRUCTS)
+#if 1//defined(MANUAL_STRUCTS)
 
 static const struct YamlIdStr srcRawEnum[] = {
     { MIXSRC_NONE, "None" },
@@ -192,7 +192,7 @@ static const struct YamlNode custFnItems[] = {
     YAML_IDX,
     YAML_SIGNED(  "swtch",     9 ),
     YAML_ENUM(    "func",      7, custFn ),
-    YAML_UNION(   "",         48, anon_union_0, NULL),
+    YAML_UNION(   "u",        48, anon_union_0, NULL),
     YAML_UNSIGNED("active",    8 ),
     YAML_END
 };

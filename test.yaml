@@ -25,8 +25,9 @@ customFn:
 - idx: 2
   swtch: 10
   func: reset
-  all:
-  - val: 3
+  u:
+  - all:
+    - val: 3
   active: 1
 - idx: 4
   swtch: 5

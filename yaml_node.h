@@ -130,7 +130,6 @@ class YamlTreeWalker
     State   stack[NODE_STACK_DEPTH];
     uint8_t stack_level;
     uint8_t virt_level;
-    uint8_t anon_union;
 
     uint8_t* data;
 
