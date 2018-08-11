@@ -110,7 +110,6 @@ static const struct YamlNode curveRefNodes[] = {
 };
 
 static const struct YamlNode mixerItems[] = {
-
     YAML_IDX,
     YAML_SIGNED(   "weight",     11 ),
     YAML_UNSIGNED( "destCh",      5 ),
@@ -123,7 +122,7 @@ static const struct YamlNode mixerItems[] = {
     YAML_SIGNED(   "swtch",       9 ),
     YAML_UNSIGNED( "flightModes", 9 ),
 
-    YAML_STRUCT( "curve", CurveRef, curveRefNodes, NULL ),
+    YAML_STRUCT( "curve", sizeof(CurveRef)<<3, curveRefNodes, NULL ),
 
     YAML_UNSIGNED(  "delayUp",    8 ),
     YAML_UNSIGNED(  "delayDown",  8 ),
@@ -149,7 +148,7 @@ static const struct YamlNode inputItems[] = {
     YAML_STRING(   "name", LEN_EXPOMIX_NAME ),
     YAML_SIGNED(   "offset",      8 ),
 
-    YAML_STRUCT( "curve", CurveRef, curveRefNodes, NULL ),
+    YAML_STRUCT( "curve", sizeof(CurveRef)<<3, curveRefNodes, NULL ),
     YAML_END
 };
 
@@ -218,10 +217,10 @@ static const struct YamlNode struct_string_32[] = {
 
 static const struct YamlNode modelItems[] = {
     YAML_STRUCT( "header", sizeof(ModelHeader)<<3, struct_ModelHeader, NULL),
-    YAML_ARRAY(  "mixers", sizeof(MixData)<<3,  MAX_MIXERS, mixerItems, NULL),
+    YAML_ARRAY(  "mixData", sizeof(MixData)<<3,  MAX_MIXERS, mixerItems, NULL),
     YAML_ARRAY(  "customFn", sizeof(CustomFunctionData)<<3, MAX_SPECIAL_FUNCTIONS, custFnItems, NULL),
     YAML_ARRAY(  "inputNames", sizeof(char[4])<<3, 32, struct_string_32, NULL),
-    YAML_ARRAY(  "inputs", sizeof(ExpoData)<<3, MAX_EXPOS,  inputItems, NULL),
+    YAML_ARRAY(  "expoData", sizeof(ExpoData)<<3, MAX_EXPOS,  inputItems, NULL),
     YAML_END
 };
 
