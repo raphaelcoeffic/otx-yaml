@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#define MAX_STR 16
+#define MAX_STR 40
 #define MAX_DEPTH 6 // 4 real + 2 virtual
 
 struct YamlParserCalls
@@ -25,6 +25,10 @@ class YamlParser
         ps_AttrSP,
         ps_Sep,
         ps_Val,
+        ps_ValQuo,
+        ps_ValEsc1,
+        ps_ValEsc2,
+        ps_ValEsc3,
         ps_CRLF
     };
 

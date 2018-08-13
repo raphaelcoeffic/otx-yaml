@@ -1,5 +1,5 @@
 header:
-- name: Test
+- name: "\xFC\xFD\x0DTest"
 mixData:
 - idx: 2
   weight: -150
