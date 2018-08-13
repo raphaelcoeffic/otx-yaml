@@ -6,7 +6,7 @@
 
 #include "yaml_parser.h"
 
-#define NODE_STACK_DEPTH 4
+#define NODE_STACK_DEPTH 12
 
 enum YamlDataType {
     YDT_NONE=0,
@@ -22,25 +22,25 @@ enum YamlDataType {
 
 struct YamlIdStr
 {
-    unsigned int id;
+    int          id;
     const char*  str;
 };
+
+// return false if error
+typedef bool (*yaml_writer_func)(void* opaque, const char* str, size_t len);
 
 struct YamlNode
 {
     typedef bool (*is_active_func)(uint8_t* data);
 
-    typedef uint32_t (*cust_to_uint_func)(const char* val, uint8_t val_len);
+    typedef uint32_t (*cust_to_uint_func)(const YamlNode* node, const char* val, uint8_t val_len);
 
-    // return false if error
-    typedef bool (*writer_func)(void* opaque, const char* str, size_t len);
+    typedef bool (*uint_to_cust_func)(const YamlNode* node, uint32_t val, yaml_writer_func wf, void* opaque);
 
-    typedef bool (*uint_to_cust_func)(uint32_t val, writer_func wf, void* opaque);
-
-    typedef const struct YamlNode* (*select_member_func)(uint8_t* data);
+    typedef uint8_t (*select_member_func)(uint8_t* data);
     
     uint8_t      type;
-    uint16_t     size;  // bits
+    uint32_t     size;  // bits
     uint8_t      tag_len;
     const char*  tag;
     union {
@@ -49,7 +49,7 @@ struct YamlNode
             union {
                 struct {
                     is_active_func  is_active;
-                    uint8_t         elmts; // maximum number of elements
+                    uint16_t        elmts; // maximum number of elements
                 } _a;
                 select_member_func select_member;
             } u;
@@ -66,6 +66,7 @@ struct YamlNode
     } u;
 };
 
+#if !defined(_MSC_VER)
 #define YAML_TAG(str)                           \
     .tag_len=(sizeof(str)-1), .tag=(str)
 
@@ -73,10 +74,10 @@ struct YamlNode
     { .type=YDT_IDX , .size=0, YAML_TAG("idx") }
 
 #define YAML_SIGNED(tag, bits)                          \
-    { .type=YDT_SIGNED, .size=(bits), YAML_TAG(tag), .u={._cust={ NULL, NULL }} }
+    { .type=YDT_SIGNED, .size=(bits), YAML_TAG(tag) }
 
 #define YAML_UNSIGNED(tag, bits)                        \
-    { .type=YDT_UNSIGNED, .size=(bits), YAML_TAG(tag), .u={._cust={ NULL, NULL }} }
+    { .type=YDT_UNSIGNED, .size=(bits), YAML_TAG(tag) }
 
 #define YAML_SIGNED_CUST(tag, bits, f_cust_to_uint, f_uint_to_cust)     \
     { .type=YDT_SIGNED, .size=(bits), YAML_TAG(tag), .u={._cust={ .cust_to_uint=f_cust_to_uint, .uint_to_cust=f_uint_to_cust }} }
@@ -103,7 +104,7 @@ struct YamlNode
     { .type=YDT_PADDING, .size=(bits) }
 
 #define YAML_END                                \
-    { .type=YDT_NONE, .size=0 }
+    { .type=YDT_NONE }
 
 #define YAML_ROOT(nodes)                                                \
     { .type=YDT_ARRAY, .size=0, .tag_len=0, .tag=NULL,                  \
@@ -113,101 +114,50 @@ struct YamlNode
             }}                                                          \
     }
 
+#else // MSVC++ compat
 
-class YamlTreeWalker
-{
-    struct State {
-        const YamlNode* node;
-        unsigned int    bit_ofs;
-        uint8_t         attr_idx;
-        uint8_t         elmts;
+#define YAML_TAG(str)                           \
+    (sizeof(str)-1), (str)
 
-        inline unsigned int getOfs() {
-            return bit_ofs + node->size * elmts;
-        }
-    };
+#define YAML_IDX                                \
+    { YDT_IDX , 0, YAML_TAG("idx") }
 
-    State   stack[NODE_STACK_DEPTH];
-    uint8_t stack_level;
-    uint8_t virt_level;
+#define YAML_SIGNED(tag, bits)                          \
+    { YDT_SIGNED, (bits), YAML_TAG(tag) }
 
-    uint8_t* data;
+#define YAML_UNSIGNED(tag, bits)                        \
+    { YDT_UNSIGNED, (bits), YAML_TAG(tag) }
 
-    unsigned int getAttrOfs() { return stack[stack_level].bit_ofs; }
-    unsigned int getLevelOfs() {
-        if (stack_level < NODE_STACK_DEPTH - 1) {
-            return stack[stack_level + 1].getOfs();
-        }
-        return 0;
-    }
+#define YAML_SIGNED_CUST(tag, bits, f_cust_to_uint, f_uint_to_cust)     \
+    { YDT_SIGNED, (bits), YAML_TAG(tag), {{ (const YamlNode*)f_cust_to_uint, {{ (YamlNode::is_active_func)f_uint_to_cust, 0 }}}} }
 
-    void setNode(const YamlNode* node) { stack[stack_level].node = node; }
-    void setAttrIdx(uint8_t idx) { stack[stack_level].attr_idx = idx; }
+#define YAML_UNSIGNED_CUST(tag, bits, f_cust_to_uint, f_uint_to_cust)   \
+    { YDT_UNSIGNED, (bits), YAML_TAG(tag), {{ (const YamlNode*)f_cust_to_uint, {{ (YamlNode::is_active_func)f_uint_to_cust, 0}}}} }
 
-    void setAttrOfs(unsigned int ofs) { stack[stack_level].bit_ofs = ofs; }
+#define YAML_STRING(tag, max_len)                               \
+    { YDT_STRING, ((max_len)<<3), YAML_TAG(tag) }
 
-    void incAttr() { stack[stack_level].attr_idx++; }
-    void incElmts() { stack[stack_level].elmts++; }
+#define YAML_STRUCT(tag, bits, nodes, f_is_active)                     \
+    { YDT_ARRAY, (bits), YAML_TAG(tag), {{ (nodes), {{ (f_is_active), 1 }}}} }
 
-    bool empty() { return stack_level == NODE_STACK_DEPTH; }
-    bool full()  { return stack_level == 0; }
-    
-    // return true on success
-    bool push();
-    bool pop();
-    
-    // Rewind to the current node's first attribute
-    // (and reset the bit offset)
-    void rewind();
+#define YAML_ARRAY(tag, bits, max_elmts, nodes, f_is_active)           \
+    { YDT_ARRAY, (bits), YAML_TAG(tag), {{ (nodes), {{ (f_is_active), (max_elmts) }}}} }
 
-public:
-    YamlTreeWalker();
+#define YAML_ENUM(tag, bits, id_strs)                                   \
+    { YDT_ENUM, (bits), YAML_TAG(tag), {{ (const YamlNode*)(id_strs) }} }
 
-    void reset(const YamlNode* node, uint8_t* data);
+#define YAML_UNION(tag, bits, nodes, f_sel_m)                       \
+    { YDT_UNION, (bits), YAML_TAG(tag), {{ (nodes), {{ (YamlNode::is_active_func)(f_sel_m), 0 }}}} }
 
-    int getLevel() {
-        return NODE_STACK_DEPTH - stack_level + virt_level;
-    }
-    
-    const YamlNode* getNode() {
-        return stack[stack_level].node;
-    }
+#define YAML_PADDING(bits)                      \
+    { YDT_PADDING, (bits) }
 
-    const YamlNode* getAttr() {
-        uint8_t idx = stack[stack_level].attr_idx;
-        return &(stack[stack_level].node->u._array.child[idx]);
-    }
+#define YAML_END                                \
+    { YDT_NONE }
 
-    unsigned int getElmts() {
-        return stack[stack_level].elmts;
-    }
+#define YAML_ROOT(nodes)                                                \
+    { YDT_ARRAY, 0, 0, NULL, {{ (nodes), {{ NULL, 1 }}}} }
 
-    // Increment the cursor until a match is found or the end of
-    // the current collection (node of type YDT_NONE) is reached.
-    //
-    // return true if a match has been found.
-    bool findNode(const char* tag, uint8_t tag_len);
-
-    // Get the current bit offset
-    unsigned int getBitOffset();
-
-    bool toParent();
-    bool toChild();
-
-    bool toNextElmt();
-    void toNextAttr();
-
-    bool isElmtEmpty(uint8_t* data);
-
-    //bool finished() { return empty(); }
-
-    void setAttrValue(char* buf, uint8_t len);
-
-    bool generate(YamlNode::writer_func wf, void* opaque);
-
-    void dump_stack();
-};
-
-extern const YamlParserCalls YamlTreeWalkerCalls;
+#endif
 
 #endif

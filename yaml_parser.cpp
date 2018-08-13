@@ -13,6 +13,7 @@ YamlParser::YamlParser()
 void YamlParser::init(const YamlParserCalls* parser_calls, void* parser_ctx)
 {
     indent = 0;
+    level  = 0;
     memset(indents, 0, sizeof(indents));
 
     calls = parser_calls;
@@ -23,14 +24,31 @@ void YamlParser::init(const YamlParserCalls* parser_calls, void* parser_ctx)
 void YamlParser::reset()
 {
     state = ps_Indent;
-    indents[calls->get_level(ctx) - 1] = indent;
+    indents[level] = indent;
     indent = scratch_len  = 0;
     node_found = false;
 }
 
+bool YamlParser::toChild()
+{
+    bool ret = calls->to_child(ctx);
+    if (ret) level++;
+    return ret;
+}
+
+bool YamlParser::toParent()
+{
+    if (!level)
+        return false;
+    
+    bool ret = calls->to_parent(ctx);
+    if (ret) level--;
+    return ret;
+}
+
 uint8_t YamlParser::getLastIndent()
 {
-    return indents[calls->get_level(ctx) - 1];
+    return indents[level];
 }
 
 YamlParser::YamlResult
@@ -41,8 +59,10 @@ YamlParser::parse(const char* buffer, unsigned int size)
     {                                           \
         if(s_len < MAX_STR)                     \
             s[s_len++] = c;                     \
-        else                                    \
+        else {                                  \
+            TRACE("STRING_OVERFLOW");           \
             return STRING_OVERFLOW;             \
+        }                                       \
     }
 
     const char* c   = buffer;
@@ -68,8 +88,8 @@ YamlParser::parse(const char* buffer, unsigned int size)
             if (indent < getLastIndent()) {
                 // go up as many levels as necessary
                 do {
-                    if (!calls->to_parent(ctx)) {
-                        printf("STOP (no parent)!\n");
+                    if (!toParent()) {
+                        TRACE("STOP (no parent)!\n");
                         return DONE_PARSING;
                     }
                 } while (indent < getLastIndent());
@@ -82,18 +102,13 @@ YamlParser::parse(const char* buffer, unsigned int size)
             }
             // go down one level
             else if (indent > getLastIndent()) {
-                if (!calls->to_child(ctx)) {
-                    printf("STOP (stack full)!\n");
-                    return DONE_PARSING; // ERROR
-                }
-
-                if (calls->get_level(ctx) > MAX_DEPTH) {
-                    printf("STOP (indent stack full)!\n");
+                if (!toChild()) {
+                    TRACE("STOP (stack full)!\n");
                     return DONE_PARSING; // ERROR
                 }
             }
             // same level, next element
-            else  if (state == ps_Dash) {
+            else if (state == ps_Dash) {
                 if (!calls->to_next_elmt(ctx)) {
                     return DONE_PARSING;
                 }
@@ -107,7 +122,8 @@ YamlParser::parse(const char* buffer, unsigned int size)
             if (*c == ' ') {// assumes nothing else comes after spaces start
                 node_found = calls->find_node(ctx, scratch_buf, scratch_len);
                 if (!node_found) {
-                    printf("Could not find node '%.*s' (1)\n", scratch_len, scratch_buf);
+                    TRACE("YAML_PARSER: Could not find node '%.*s' (1)\n",
+                          scratch_len, scratch_buf);
                 }
                 state = ps_AttrSP;
                 break;
@@ -120,7 +136,8 @@ YamlParser::parse(const char* buffer, unsigned int size)
                 if (state == ps_Attr) {
                     node_found = calls->find_node(ctx, scratch_buf, scratch_len);
                     if (!node_found) {
-                        printf("Could not find node '%.*s' (2)\n", scratch_len, scratch_buf);
+                        TRACE("YAML_PARSER: Could not find node '%.*s' (2)\n",
+                              scratch_len, scratch_buf);
                     }
                 }
                 state = ps_CRLF;
@@ -130,7 +147,8 @@ YamlParser::parse(const char* buffer, unsigned int size)
                 if (state == ps_Attr) {
                     node_found = calls->find_node(ctx, scratch_buf, scratch_len);
                     if (!node_found) {
-                        printf("Could not find node '%.*s' (3)\n", scratch_len, scratch_buf);
+                        TRACE("YAML_PARSER: Could not find node '%.*s' (3)\n",
+                              scratch_len, scratch_buf);
                     }
                 }
                 state = ps_Sep;
@@ -208,7 +226,7 @@ YamlParser::parse(const char* buffer, unsigned int size)
             return DONE_PARSING;
             
         case ps_Val:
-            if (*c == '\r' || *c == '\n') {
+            if (*c == ' ' || *c == '\r' || *c == '\n') {
                 // set attribute
                 if (node_found) {
                     calls->set_attr(ctx, scratch_buf, scratch_len);

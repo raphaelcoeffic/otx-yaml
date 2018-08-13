@@ -5,7 +5,7 @@
 #define MASK_LOWER(bits) ((1 << (bits)) - 1)
 #define MASK_UPPER(bits) (0xFF << bits)
 
-void yaml_put_bits(uint8_t* dst, uint32_t i, uint32_t bit_ofs, uint8_t bits)
+void yaml_put_bits(uint8_t* dst, uint32_t i, uint32_t bit_ofs, uint32_t bits)
 {
     i &= ((1UL << bits) - 1);
 
@@ -35,7 +35,7 @@ void yaml_put_bits(uint8_t* dst, uint32_t i, uint32_t bit_ofs, uint8_t bits)
 }
 
 
-uint32_t yaml_get_bits(uint8_t* src, uint32_t bit_ofs, uint8_t bits)
+uint32_t yaml_get_bits(uint8_t* src, uint32_t bit_ofs, uint32_t bits)
 {
     uint32_t i = 0;
     uint32_t bit_shift = 0;
@@ -67,7 +67,7 @@ uint32_t yaml_get_bits(uint8_t* src, uint32_t bit_ofs, uint8_t bits)
     return i;
 }
 
-bool yaml_is_zero(uint8_t* data, uint8_t bits)
+bool yaml_is_zero(uint8_t* data, uint32_t bits)
 {
     uint8_t res = 0;
 
@@ -112,7 +112,7 @@ uint32_t yaml_str2uint(const char* val, uint8_t val_len)
 static char int2str_buffer[MAX_STR] = {0};
 static const char _int2str_lookup[] = { '0', '1', '2', '3', '4', '5', '6' , '7', '8', '9' };
 
-char* yaml_unsigned2str(unsigned int i)
+char* yaml_unsigned2str(uint32_t i)
 {
     char* c = &(int2str_buffer[MAX_STR-2]);
     do {
@@ -123,7 +123,7 @@ char* yaml_unsigned2str(unsigned int i)
     return (c + 1);
 }
 
-char* yaml_signed2str(int i)
+char* yaml_signed2str(int32_t i)
 {
     if (i < 0) {
         char* c = yaml_unsigned2str(-i);
@@ -131,10 +131,10 @@ char* yaml_signed2str(int i)
         return c;
     }
 
-    return yaml_unsigned2str((unsigned int)i);
+    return yaml_unsigned2str((uint32_t)i);
 }
 
-int32_t yaml_to_signed(uint32_t i, uint8_t bits)
+int32_t yaml_to_signed(uint32_t i, uint32_t bits)
 {
     if (i & (1 << (bits-1))) {
         i |= 0xFFFFFFFF << bits;

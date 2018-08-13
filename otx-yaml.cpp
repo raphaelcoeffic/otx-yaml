@@ -2,8 +2,10 @@
 #include <string.h>
 #include <assert.h>
 
+#include "yaml_tree_walker.h"
 #include "yaml_parser.h"
 #include "yaml_node.h"
+
 #include "model.h"
 #include "modelslist.h"
 
@@ -53,7 +55,7 @@ int main()
     YamlTreeWalker tree;
 
     tree.reset(&modelNode, (uint8_t*)&model);
-    yp.init(&YamlTreeWalkerCalls, &tree);
+    yp.init(YamlTreeWalker::get_parser_calls(), &tree);
 
     char   buffer[32];
     FILE * f = fopen("./test.yaml", "r");
